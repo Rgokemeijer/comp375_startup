@@ -6,10 +6,11 @@
  * 	1. The port number on which to bind and listen for connections
  * 	2. The directory out of which to serve files.
  *
- * 	TODO: update author info with names and USD email addresses
  *
- * Author 1:
- * Author 2:
+ * Author 1:Russell Gokemeijer
+ * Email: RGokemeijer@sandiego.edu
+ * Author 2: Matthew Gloriani
+ * Email: MGloriani@sandiego.edu
  */
 
 // standard C libraries
@@ -36,7 +37,7 @@
 #include <filesystem>
 
 // shorten the std::filesystem namespace down to just fs
-namespace fs = std::filesystem;
+// namespace fs = std::filesystem;
 
 using std::cout;
 using std::string;
