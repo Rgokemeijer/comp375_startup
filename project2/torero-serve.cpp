@@ -55,10 +55,10 @@ void acceptConnections(const int server_sock);
 void handleClient(const int client_sock);
 void sendData(int socked_fd, const char *data, size_t data_length);
 int receiveData(int socked_fd, char *dest, size_t buff_size);
-string badRequest();
-string notFoundRequest();
+void badRequest();
+void notFoundRequest();
 void okayResponse(const int client_sock);
-void contentResponse(const int client_sock);
+void contentResponse(const int client_sock, string file_name);
 
 
 int main(int argc, char** argv) {
@@ -152,7 +152,10 @@ void handleClient(const int client_sock) {
 		prev = pos + 1;
 	}
 	received_lines.push_back(received_str.substr(prev));
-	cout << received_lines[0];
+	//cout << received_lines[0] + " <- line\n";
+	int end_index = received_lines[0].find(" ", 4) - 4;
+	string file_name = received_lines[0].substr(4, end_index);
+	//cout << file_name + " <-file name\n";
 	// TODO
 	// Step 3: Generate HTTP response message based on the request you received.
 	
@@ -164,7 +167,7 @@ void handleClient(const int client_sock) {
 	
 	// CHANGE THIS FOR LATER
 	okayResponse(client_sock);
-	contentResponse(client_sock);	
+	contentResponse(client_sock, file_name);	
 	
 	//sendData(client_sock, HTTP_Response.c_str(), HTTP_Response.length());
 	// Close connection with client.
@@ -173,16 +176,17 @@ void handleClient(const int client_sock) {
 /**
  * Bad request void function
  */
-string badRequest() {
-	//string bad_request_string = "HTTP/1.0 400 BAD REQUEST\r\n\r\n";	
-	return "HTTP/1.0 400 BAD REQUEST\r\n\r\n";
+void badRequest(const int client_sock) {
+	string bad_request_string = "HTTP/1.0 400 BAD REQUEST\r\n\r\n";	
+	sendData(client_sock, bad_request_string.c_str(), bad_request_string.length());
 }
 
 /**
  * Not found request void function
  */
-string notFoundRequest() {
-	return "HTTP/1.0 404 NOT FOUND\r\n\r\n";
+void notFoundRequest(const int client_sock) {
+	string n_found_str = "HTTP/1.0 404 NOT FOUND\r\n\r\n";
+	sendData(client_sock, n_found_str.c_str(), n_found_str.length());
 }
 
 /**
@@ -200,19 +204,17 @@ void okayResponse(const int client_sock) {
 	// putting em together
 	string together = okay_string + content_type + "\r\n";
 	sendData(client_sock, together.c_str(), together.length());
-	cout << together;
 }
 
-void contentResponse(const int client_sock){
+void contentResponse(const int client_sock, string file_name){
 	//read_file
-	std::ifstream file("WWW/index.html", std::ios::binary);
+	std::ifstream file("WWW/" + file_name, std::ios::binary);
     const unsigned int buffer_size = 4096;
     char file_data[buffer_size];
     while(!file.eof()) {
         file.read(file_data, buffer_size);
         int bytes_read = file.gcount();
 		sendData(client_sock, file_data, bytes_read);
-    	cout << file_data;
 	}
     file.close();
 }
