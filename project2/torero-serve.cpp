@@ -6,11 +6,12 @@
  * 	1. The port number on which to bind and listen for connections
  * 	2. The directory out of which to serve files.
  *
+ * 	Author info with names and USD email addresses
+ *	Author: Matthew Gloriani
+ *			matthewgloriani@sandiego.edu
+ *	Author: Russell Gokemeijer
+ *			rgokemeijer@sandiego.edu
  *
- * Author 1:Russell Gokemeijer
- * Email: RGokemeijer@sandiego.edu
- * Author 2: Matthew Gloriani
- * Email: MGloriani@sandiego.edu
  */
 
 // standard C libraries
@@ -35,9 +36,10 @@
 #include <iostream>
 #include <system_error>
 #include <filesystem>
+#include <fstream>
 
 // shorten the std::filesystem namespace down to just fs
-// namespace fs = std::filesystem;
+namespace fs = std::filesystem;
 
 using std::cout;
 using std::string;
@@ -53,6 +55,11 @@ void acceptConnections(const int server_sock);
 void handleClient(const int client_sock);
 void sendData(int socked_fd, const char *data, size_t data_length);
 int receiveData(int socked_fd, char *dest, size_t buff_size);
+void badRequest(const int client_sock);
+void notFoundRequest(const int client_sock);
+void okayResponse(const int client_sock);
+//void contentResponse(const int client_sock);
+
 
 int main(int argc, char** argv) {
 
@@ -145,10 +152,61 @@ void handleClient(const int client_sock) {
 	// Step 4: Send response to client using the sendData function.
 	// FIXME: The following line just sends back the request message, which is
 	// definitely not what you want to do.
-	sendData(client_sock, request_string.c_str(), request_string.length());
+	// sendData(client_sock, request_string.c_str(), request_string.length());
 	
+	// CHANGE THIS FOR LATER
+	okayResponse(client_sock);
+	//contentResponse(client_sock);	
 	// Close connection with client.
 	close(client_sock);
+}
+/**
+ * Bad request void function
+ */
+void badRequest(const int client_sock) {
+	string bad_request_string = "HTTP/1.0 400 BAD REQUEST\r\n\r\n";
+	sendData(client_sock, bad_request_string.c_str(), bad_request_string.length());
+}
+
+/**
+ * Not found request void function
+ */
+void notFoundRequest(const int client_sock) {
+	string not_found_string = "HTTP/1.0 404 NOT FOUND\r\n\r\n";
+	sendData(client_sock, not_found_string.c_str(), not_found_string.length());
+}
+
+/**
+ * HTTP 200 OK response message void function
+ * Also sends header
+ */
+void okayResponse(const int client_sock) {
+	// message
+	string okay_string = "HTTP/1.0 200 OK\r\n";
+	
+	//read_file
+	std::ifstream myFile ("WWW/index.html");
+	string line;
+	string file_string = "\r\n";
+	if (myFile.is_open()){
+		while (getline(myFile, line)){
+			file_string += line;
+			file_string += "\r\n";
+		}
+		file_string += "\r\n";
+		myFile.close();
+	}
+	else{
+		cout << "Error open file";
+	}
+
+	// header
+	string content_type = "Content-Type: text/html\r\n";
+	string content_length = "Content-Length: " + std::to_string(file_string.length()) + "\r\n"; 
+		
+	// putting em together
+	string appended = okay_string + content_type + file_string;
+	sendData(client_sock, appended.c_str(), appended.length());
 }
 
 /**
