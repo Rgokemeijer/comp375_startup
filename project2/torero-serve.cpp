@@ -57,8 +57,8 @@ void sendData(int socked_fd, const char *data, size_t data_length);
 int receiveData(int socked_fd, char *dest, size_t buff_size);
 string badRequest();
 string notFoundRequest();
-string okayResponse();
-//void contentResponse(const int client_sock);
+void okayResponse(const int client_sock);
+void contentResponse(const int client_sock);
 
 
 int main(int argc, char** argv) {
@@ -136,7 +136,7 @@ void handleClient(const int client_sock) {
 	// Step 1: Receive the request message from the client
 	char received_data[2048];
 	int bytes_received = receiveData(client_sock, received_data, 2048);
-
+	string received_str = std::string(received_data);
 	// Turn the char array into a C++ string for easier processing.
 	string request_string(received_data, bytes_received);
 	
@@ -144,7 +144,15 @@ void handleClient(const int client_sock) {
 	// Step 2: Parse the request string to determine what response to generate.
 	// I recommend using regular expressions (specifically C++'s std::regex) to
 	// determine if a request is properly formatted.
-	
+	std::vector<string> received_lines;
+	string::size_type pos = 0;
+	string::size_type prev = 0;
+	while(( pos = received_str.find("\r\n", prev)) != std::string::npos){
+		received_lines.push_back(received_str.substr(prev, pos - prev));
+		prev = pos + 1;
+	}
+	received_lines.push_back(received_str.substr(prev));
+	cout << received_lines[0];
 	// TODO
 	// Step 3: Generate HTTP response message based on the request you received.
 	
@@ -155,10 +163,10 @@ void handleClient(const int client_sock) {
 	// sendData(client_sock, request_string.c_str(), request_string.length());
 	
 	// CHANGE THIS FOR LATER
-	string HTTP_Response = okayResponse();
-	//contentResponse(client_sock);	
+	okayResponse(client_sock);
+	contentResponse(client_sock);	
 	
-	sendData(client_sock, HTTP_Response.c_str(), HTTP_Response.length());
+	//sendData(client_sock, HTTP_Response.c_str(), HTTP_Response.length());
 	// Close connection with client.
 	close(client_sock);
 }
@@ -181,32 +189,32 @@ string notFoundRequest() {
  * HTTP 200 OK response message void function
  * Also sends header
  */
-string okayResponse() {
+void okayResponse(const int client_sock) {
 	// message
 	string okay_string = "HTTP/1.0 200 OK\r\n";
 	
-	//read_file
-	std::ifstream myFile ("WWW/index.html");
-	string line;
-	string file_string = "\r\n";
-	if (myFile.is_open()){
-		while (getline(myFile, line)){
-			file_string += line;
-			file_string += "\r\n";
-		}
-		file_string += "\r\n";
-		myFile.close();
-	}
-	else{
-		cout << "Error open file";
-	}
-
 	// header
 	string content_type = "Content-Type: text/html\r\n";
-	string content_length = "Content-Length: " + std::to_string(file_string.length()) + "\r\n"; 
+	//string content_length = "Content-Length: " + std::to_string(bytes_read) + "\r\n"; 
 		
 	// putting em together
-	return okay_string + content_type + file_string;
+	string together = okay_string + content_type + "\r\n";
+	sendData(client_sock, together.c_str(), together.length());
+	cout << together;
+}
+
+void contentResponse(const int client_sock){
+	//read_file
+	std::ifstream file("WWW/index.html", std::ios::binary);
+    const unsigned int buffer_size = 4096;
+    char file_data[buffer_size];
+    while(!file.eof()) {
+        file.read(file_data, buffer_size);
+        int bytes_read = file.gcount();
+		sendData(client_sock, file_data, bytes_read);
+    	cout << file_data;
+	}
+    file.close();
 }
 
 /**
