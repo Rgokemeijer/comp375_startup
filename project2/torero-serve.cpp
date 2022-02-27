@@ -55,9 +55,9 @@ void acceptConnections(const int server_sock);
 void handleClient(const int client_sock);
 void sendData(int socked_fd, const char *data, size_t data_length);
 int receiveData(int socked_fd, char *dest, size_t buff_size);
-void badRequest(const int client_sock);
-void notFoundRequest(const int client_sock);
-void okayResponse(const int client_sock);
+string badRequest();
+string notFoundRequest();
+string okayResponse();
 //void contentResponse(const int client_sock);
 
 
@@ -155,32 +155,33 @@ void handleClient(const int client_sock) {
 	// sendData(client_sock, request_string.c_str(), request_string.length());
 	
 	// CHANGE THIS FOR LATER
-	okayResponse(client_sock);
+	string HTTP_Response = okayResponse();
 	//contentResponse(client_sock);	
+	
+	sendData(client_sock, HTTP_Response.c_str(), HTTP_Response.length());
 	// Close connection with client.
 	close(client_sock);
 }
 /**
  * Bad request void function
  */
-void badRequest(const int client_sock) {
-	string bad_request_string = "HTTP/1.0 400 BAD REQUEST\r\n\r\n";
-	sendData(client_sock, bad_request_string.c_str(), bad_request_string.length());
+string badRequest() {
+	//string bad_request_string = "HTTP/1.0 400 BAD REQUEST\r\n\r\n";	
+	return "HTTP/1.0 400 BAD REQUEST\r\n\r\n";
 }
 
 /**
  * Not found request void function
  */
-void notFoundRequest(const int client_sock) {
-	string not_found_string = "HTTP/1.0 404 NOT FOUND\r\n\r\n";
-	sendData(client_sock, not_found_string.c_str(), not_found_string.length());
+string notFoundRequest() {
+	return "HTTP/1.0 404 NOT FOUND\r\n\r\n";
 }
 
 /**
  * HTTP 200 OK response message void function
  * Also sends header
  */
-void okayResponse(const int client_sock) {
+string okayResponse() {
 	// message
 	string okay_string = "HTTP/1.0 200 OK\r\n";
 	
@@ -205,8 +206,7 @@ void okayResponse(const int client_sock) {
 	string content_length = "Content-Length: " + std::to_string(file_string.length()) + "\r\n"; 
 		
 	// putting em together
-	string appended = okay_string + content_type + file_string;
-	sendData(client_sock, appended.c_str(), appended.length());
+	return okay_string + content_type + file_string;
 }
 
 /**
