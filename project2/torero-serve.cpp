@@ -37,6 +37,7 @@
 #include <system_error>
 #include <filesystem>
 #include <fstream>
+#include <regex>
 
 // shorten the std::filesystem namespace down to just fs
 namespace fs = std::filesystem;
@@ -55,14 +56,13 @@ void acceptConnections(const int server_sock);
 void handleClient(const int client_sock);
 void sendData(int socked_fd, const char *data, size_t data_length);
 int receiveData(int socked_fd, char *dest, size_t buff_size);
-void badRequest();
-void notFoundRequest();
+void badRequest(const int client_sock);
+void notFoundRequest(const int client_sock);
 void okayResponse(const int client_sock, string file_type);
 void contentResponse(const int client_sock, string file_name);
 
 
 int main(int argc, char** argv) {
-	printf("Starting server");
 	/* Make sure the user called our program correctly. */
 	if (argc != 3) {
 		// TODO: print a proper error message informing user of proper usage
@@ -137,12 +137,12 @@ void handleClient(const int client_sock) {
 	char received_data[2048];
 	int bytes_received = receiveData(client_sock, received_data, 2048);
 	string received_str = std::string(received_data);
+
 	// Turn the char array into a C++ string for easier processing.
 	string request_string(received_data, bytes_received);
 	
-	// TODO
 	// Step 2: Parse the request string to determine what response to generate.
-	// I recommend using regular expressions (specifically C++'s std::regex) to
+	// We used regular expressions (specifically C++'s std::regex) to
 	// determine if a request is properly formatted.
 	std::vector<string> received_lines;
 	string::size_type pos = 0;
@@ -152,8 +152,19 @@ void handleClient(const int client_sock) {
 		prev = pos + 1;
 	}
 	received_lines.push_back(received_str.substr(prev));
-	//cout << received_lines[0] + " <- line\n";
-	int end_index = received_lines[0].find(" ", 4) - 4;
+ 	
+	//Check if valid request
+	std::regex http_request_regex("GET /([a-zA-Z0-9_\\-\\.]*) HTTP/1\\.1\r\n\r\n",
+                 std::regex_constants::ECMAScript);
+ 	std::smatch request_match;	
+	//if (! std::regex_match(received_lines[0], request_match, http_request_regex)) {
+	//	badRequest(client_sock);
+	//	close(client_sock);
+	//	return;
+	//}
+
+	//Process the data to determine request
+ 	int end_index = received_lines[0].find(" ", 4) - 4;
 	string file_name = received_lines[0].substr(4, end_index);
 	//cout << file_name + " <-file name\n";
 	// TODO
@@ -173,14 +184,17 @@ void handleClient(const int client_sock) {
 	string file_type = file_name.substr(start_index);
 	//cout << "File type: " + file_type + "\n";	
 	// Step 4: Send response to client using the sendData function.
-	// FIXME: The following line just sends back the request message, which is
-	// definitely not what you want to do.
 	// sendData(client_sock, request_string.c_str(), request_string.length());
 	
+	std::ifstream file("WWW/" + file_name, std::ios::binary);
+	if (! file.is_open()){
+		notFoundRequest(client_sock);
+		close(client_sock);
+		return;	
+	}
+	file.close();
 	// CHANGE THIS FOR LATER
-	cout << "before okey";
 	okayResponse(client_sock, file_type);
-	cout << "we out here";
 	contentResponse(client_sock, file_name);	
 	
 	//sendData(client_sock, HTTP_Response.c_str(), HTTP_Response.length());
@@ -199,7 +213,7 @@ void badRequest(const int client_sock) {
  * Not found request void function
  */
 void notFoundRequest(const int client_sock) {
-	string n_found_str = "HTTP/1.0 404 NOT FOUND\r\n\r\n";
+	string n_found_str = "HTTP/1.0 404 NOT FOUND\r\n\r\n<html>\n<head>\n<title>Ruh-roh! Page not found!</title>\n</head>\n<body>\n404 Page Not Found! :'( :'( :'(\n</body>\n</html>";
 	sendData(client_sock, n_found_str.c_str(), n_found_str.length());
 }
 
@@ -231,9 +245,12 @@ void okayResponse(const int client_sock, string file_type) {
 
 void contentResponse(const int client_sock, string file_name){
 	//read_file
-	cout << "HELLO :ADS";
 	std::ifstream file("WWW/" + file_name, std::ios::binary);
-    cout << file.is_open() + " why";
+	if (! file.is_open()){
+		notFoundRequest(client_sock);
+		close(client_sock);
+		return;	
+	}
 	const unsigned int buffer_size = 4096;
     char file_data[buffer_size];
     while(!file.eof()) {
