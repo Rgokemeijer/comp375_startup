@@ -57,18 +57,18 @@ void sendData(int socked_fd, const char *data, size_t data_length);
 int receiveData(int socked_fd, char *dest, size_t buff_size);
 void badRequest();
 void notFoundRequest();
-void okayResponse(const int client_sock);
+void okayResponse(const int client_sock, string file_type);
 void contentResponse(const int client_sock, string file_name);
 
 
 int main(int argc, char** argv) {
-
+	printf("Starting server");
 	/* Make sure the user called our program correctly. */
 	if (argc != 3) {
 		// TODO: print a proper error message informing user of proper usage
 		cout << "INCORRECT USAGE!\n";
 		exit(1);
-	}
+	}	
 
     /* Read the port number from the first command line argument. */
     int port = std::stoi(argv[1]);
@@ -158,15 +158,29 @@ void handleClient(const int client_sock) {
 	//cout << file_name + " <-file name\n";
 	// TODO
 	// Step 3: Generate HTTP response message based on the request you received.
+	if (file_name == "/favicon.ico"){
+		close(client_sock);
+		return;
+	}
+	if (file_name == "/"){
+		file_name = "/index.html";
+	}
+	// Check if file exists in system
 	
-	// TODO
+	
+	// parse file type
+	int start_index = file_name.find(".") + 1;
+	string file_type = file_name.substr(start_index);
+	//cout << "File type: " + file_type + "\n";	
 	// Step 4: Send response to client using the sendData function.
 	// FIXME: The following line just sends back the request message, which is
 	// definitely not what you want to do.
 	// sendData(client_sock, request_string.c_str(), request_string.length());
 	
 	// CHANGE THIS FOR LATER
-	okayResponse(client_sock);
+	cout << "before okey";
+	okayResponse(client_sock, file_type);
+	cout << "we out here";
 	contentResponse(client_sock, file_name);	
 	
 	//sendData(client_sock, HTTP_Response.c_str(), HTTP_Response.length());
@@ -193,12 +207,21 @@ void notFoundRequest(const int client_sock) {
  * HTTP 200 OK response message void function
  * Also sends header
  */
-void okayResponse(const int client_sock) {
+void okayResponse(const int client_sock, string file_type) {
+	if (file_type == "html" || file_type == "css" || file_type == "txt"){
+		file_type = "text/" + file_type;
+	}
+	else if(file_type == "jpeg" || file_type == "gif" || file_type == "png"){
+		file_type = "image/" + file_type;
+	}
+	else{
+		file_type = "application/" + file_type;
+	}
 	// message
 	string okay_string = "HTTP/1.0 200 OK\r\n";
 	
 	// header
-	string content_type = "Content-Type: text/html\r\n";
+	string content_type = "Content-Type: " + file_type + "\r\n";
 	//string content_length = "Content-Length: " + std::to_string(bytes_read) + "\r\n"; 
 		
 	// putting em together
@@ -208,8 +231,10 @@ void okayResponse(const int client_sock) {
 
 void contentResponse(const int client_sock, string file_name){
 	//read_file
+	cout << "HELLO :ADS";
 	std::ifstream file("WWW/" + file_name, std::ios::binary);
-    const unsigned int buffer_size = 4096;
+    cout << file.is_open() + " why";
+	const unsigned int buffer_size = 4096;
     char file_data[buffer_size];
     while(!file.eof()) {
         file.read(file_data, buffer_size);
