@@ -1,0 +1,431 @@
+/**
+ * ToreroServe: A Lean Web Server
+ * COMP 375 - Project 02
+ *
+ * This program should take two arguments:
+ * 	1. The port number on which to bind and listen for connections
+ * 	2. The directory out of which to serve files.
+ *
+ * 	Author info with names and USD email addresses
+ *	Author: Matthew Gloriani
+ *			matthewgloriani@sandiego.edu
+ *	Author: Russell Gokemeijer
+ *			rgokemeijer@sandiego.edu
+ *
+ */
+
+// standard C libraries
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <cerrno>
+
+// operating system specific libraries
+#include <netinet/in.h>
+#include <sys/select.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/uio.h>
+#include <unistd.h>
+
+// C++ standard libraries
+#include <vector>
+#include <thread>
+#include <string>
+#include <iostream>
+#include <system_error>
+#include <filesystem>
+#include <fstream>
+#include <regex>
+
+// shorten the std::filesystem namespace down to just fs
+namespace fs = std::filesystem;
+
+using std::cout;
+using std::string;
+using std::vector;
+using std::thread;
+
+// This will limit how many clients can be waiting for a connection.
+static const int BACKLOG = 10;
+
+// forward declarations
+int createSocketAndListen(const int port_num);
+void acceptConnections(const int server_sock);
+void handleClient(const int client_sock);
+void sendData(int socked_fd, const char *data, size_t data_length);
+int receiveData(int socked_fd, char *dest, size_t buff_size);
+void badRequest(const int client_sock);
+void notFoundRequest(const int client_sock);
+void okayResponse(const int client_sock, string file_type);
+void contentResponse(const int client_sock, string file_name);
+void send_dir(int client_sock, string file_name);
+void send_page(int client_sock, string file_name);
+
+int main(int argc, char** argv) {
+	/* Make sure the user called our program correctly. */
+	if (argc != 3) {
+		// TODO: print a proper error message informing user of proper usage
+		cout << "INCORRECT USAGE!\n";
+		exit(1);
+	}	
+
+    /* Read the port number from the first command line argument. */
+    int port = std::stoi(argv[1]);
+
+	/* Create a socket and start listening for new connections on the
+	 * specified port. */
+	int server_sock = createSocketAndListen(port);
+
+	/* Now let's start accepting connections. */
+	acceptConnections(server_sock);
+
+    close(server_sock);
+
+	return 0;
+}
+
+/**
+ * Sends message over given socket, raising an exception if there was a problem
+ * sending.
+ *
+ * @param socket_fd The socket to send data over.
+ * @param data The data to send.
+ * @param data_length Number of bytes of data to send.
+ */
+void sendData(int socked_fd, const char *data, size_t data_length) {
+	// TODO: Wrap the following code in a loop so that it keeps sending until
+	// the data has been completely sent.
+	
+	int num_bytes_sent = send(socked_fd, data, data_length, 0);
+	if (num_bytes_sent == -1) {
+		std::error_code ec(errno, std::generic_category());
+		throw std::system_error(ec, "send failed");
+	}
+}
+
+/**
+ * Receives message over given socket, raising an exception if there was an
+ * error in receiving.
+ *
+ * @param socket_fd The socket to send data over.
+ * @param dest The buffer where we will store the received data.
+ * @param buff_size Number of bytes in the buffer.
+ * @return The number of bytes received and written to the destination buffer.
+ */
+int receiveData(int socked_fd, char *dest, size_t buff_size) {
+	int num_bytes_received = recv(socked_fd, dest, buff_size, 0);
+	if (num_bytes_received == -1) {
+		std::error_code ec(errno, std::generic_category());
+		throw std::system_error(ec, "recv failed");
+	}
+
+	return num_bytes_received;
+}
+
+/**
+ * Receives a request from a connected HTTP client and sends back the
+ * appropriate response.
+ *
+ * @note After this function returns, client_sock will have been closed (i.e.
+ * may not be used again).
+ *
+ * @param client_sock The client's socket file descriptor.
+ */
+void handleClient(const int client_sock) {
+	// Step 1: Receive the request message from the client
+	char received_data[2048];
+	int bytes_received = receiveData(client_sock, received_data, 2048);
+	string received_str = std::string(received_data);
+
+	// Turn the char array into a C++ string for easier processing.
+	string request_string(received_data, bytes_received);
+	
+	// Step 2: Parse the request string to determine what response to generate.
+	// We used regular expressions (specifically C++'s std::regex) to
+	// determine if a request is properly formatted.
+	std::vector<string> received_lines;
+	string::size_type pos = 0;
+	string::size_type prev = 0;
+	while(( pos = received_str.find("\r\n", prev)) != std::string::npos){
+		received_lines.push_back(received_str.substr(prev, pos - prev));
+		prev = pos + 1;
+	}
+	received_lines.push_back(received_str.substr(prev));
+ 	
+	//Check if valid request
+    // This is a regex that matches all valid requests
+	std::regex http_request_regex("GET( *)/([a-zA-Z0-9_\\-/.]*)( *)HTTP/([0-9]*).([0-9]*)",
+	             std::regex_constants::ECMAScript);
+ 	std::smatch request_match;
+	// if no match send badRequest message
+	if (! std::regex_match(received_lines[0], request_match, http_request_regex)) {
+		cout << "BAD REQUEST" << std::endl;
+		badRequest(client_sock);
+		close(client_sock);
+		return;
+	}
+	
+	//Process the data to determine request
+ 	int end_index = received_lines[0].find(" ", 4) - 4;
+	string file_name = received_lines[0].substr(4, end_index);
+	
+	// Step 3: Generate HTTP response message based on the request you received.
+	if (file_name == "/favicon.ico"){
+		close(client_sock);
+		return;
+	}
+	
+	// parse file type
+	cout << file_name.back() << "<- last char" << std::endl;
+	if (file_name.back() == '/'){
+		send_dir(client_sock, file_name);
+	}
+	else{
+		send_page(client_sock, file_name);
+	}
+	// Close connection with client.
+	close(client_sock);
+}
+
+void send_dir(int client_sock, string file_name){
+	file_name += "index.html";
+	cout << file_name << std::endl;
+	std::ifstream file("WWW/" + file_name, std::ios::binary);
+	if (file.is_open()){
+		send_page(client_sock, file_name);
+		file.close();
+		return;
+	}
+	// TODO BRING THE BELOW CODE BACK WHEN WORKING
+	/*else{
+		okayResponse(client_sock, "text/html");
+		string dir_html = "<html>\n<body>\n<ul>";
+		std::cout << "got here" << std::endl;
+		for (const auto& entry: fs::directory_iterator("WWW/home")) {
+			std::cout << entry.path() << "\n" << std::endl;
+		}
+	}*/
+}
+
+void send_page(int client_sock, string file_name){
+	// Step 4: Send response to client using the sendData function.
+	//TODO make this code faster	
+	std::ifstream file("WWW/" + file_name, std::ios::binary);
+	int start_index = file_name.find(".") + 1;
+	string file_type = file_name.substr(start_index);
+	if (! file.is_open()){
+		notFoundRequest(client_sock);
+		return;
+	}
+	file.close();
+	// CHANGE THIS FOR LATER
+	okayResponse(client_sock, file_type);
+	contentResponse(client_sock, file_name);	
+}	
+
+/**
+ * Bad request void function
+ */
+void badRequest(const int client_sock) {
+	string bad_request_string = "HTTP/1.0 400 BAD REQUEST\r\n\r\n";	
+	sendData(client_sock, bad_request_string.c_str(), bad_request_string.length());
+}
+
+/**
+ * Not found request void function
+ */
+void notFoundRequest(const int client_sock) {
+	string n_found_str = "HTTP/1.0 404 NOT FOUND\r\n\r\n<html>\n<head>\n<title>Ruh-roh! Page not found!</title>\n</head>\n<body>\n404 Page Not Found! :'( :'( :'(\n</body>\n</html>";
+	sendData(client_sock, n_found_str.c_str(), n_found_str.length());
+}
+
+/**
+ * HTTP 200 OK response message void function
+ * Also sends header
+ */
+void okayResponse(const int client_sock, string file_type) {
+	if (file_type == "html" || file_type == "css" || file_type == "txt"){
+		file_type = "text/" + file_type;
+	}
+	else if(file_type == "jpeg" || file_type == "gif" || file_type == "png"){
+		file_type = "image/" + file_type;
+	}
+	else{
+		file_type = "application/" + file_type;
+	}
+	// message
+	string okay_string = "HTTP/1.0 200 OK\r\n";
+	
+	// header
+	string content_type = "Content-Type: " + file_type + "\r\n";
+	//string content_length = "Content-Length: " + std::to_string(bytes_read) + "\r\n"; 
+		
+	// putting em together
+	string together = okay_string + content_type + "\r\n";
+	sendData(client_sock, together.c_str(), together.length());
+}
+
+void contentResponse(const int client_sock, string file_name){
+	//read_file
+	std::ifstream file("WWW/" + file_name, std::ios::binary);
+	if (! file.is_open()){
+		notFoundRequest(client_sock);
+		close(client_sock);
+		return;	
+	}
+	const unsigned int buffer_size = 4096;
+    char file_data[buffer_size];
+    while(!file.eof()) {
+        file.read(file_data, buffer_size);
+        int bytes_read = file.gcount();
+		sendData(client_sock, file_data, bytes_read);
+	}
+    file.close();
+}
+
+/**
+ * Creates a new socket and starts listening on that socket for new
+ * connections.
+ *
+ * @param port_num The port number on which to listen for connections.
+ * @returns The socket file descriptor
+ */
+int createSocketAndListen(const int port_num) {
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock < 0) {
+        perror("Creating socket failed");
+        exit(1);
+    }
+
+    /* 
+	 * A server socket is bound to a port, which it will listen on for incoming
+     * connections.  By default, when a bound socket is closed, the OS waits a
+     * couple of minutes before allowing the port to be re-used.  This is
+     * inconvenient when you're developing an application, since it means that
+     * you have to wait a minute or two after you run to try things again, so
+     * we can disable the wait time by setting a socket option called
+     * SO_REUSEADDR, which tells the OS that we want to be able to immediately
+     * re-bind to that same port. See the socket(7) man page ("man 7 socket")
+     * and setsockopt(2) pages for more details about socket options.
+	 */
+    int reuse_true = 1;
+
+	int retval; // for checking return values
+
+    retval = setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse_true,
+                        sizeof(reuse_true));
+
+    if (retval < 0) {
+        perror("Setting socket option failed");
+        exit(1);
+    }
+
+    /*
+	 * Create an address structure.  This is very similar to what we saw on the
+     * client side, only this time, we're not telling the OS where to connect,
+     * we're telling it to bind to a particular address and port to receive
+     * incoming connections.  Like the client side, we must use htons() to put
+     * the port number in network byte order.  When specifying the IP address,
+     * we use a special constant, INADDR_ANY, which tells the OS to bind to all
+     * of the system's addresses.  If your machine has multiple network
+     * interfaces, and you only wanted to accept connections from one of them,
+     * you could supply the address of the interface you wanted to use here.
+	 */
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port_num);
+    addr.sin_addr.s_addr = INADDR_ANY;
+
+    /* 
+	 * As its name implies, this system call asks the OS to bind the socket to
+     * address and port specified above.
+	 */
+    retval = bind(sock, (struct sockaddr*)&addr, sizeof(addr));
+    if (retval < 0) {
+        perror("Error binding to port");
+        exit(1);
+    }
+
+    /* 
+	 * Now that we've bound to an address and port, we tell the OS that we're
+     * ready to start listening for client connections. This effectively
+	 * activates the server socket. BACKLOG (a global constant defined above)
+	 * tells the OS how much space to reserve for incoming connections that have
+	 * not yet been accepted.
+	 */
+    retval = listen(sock, BACKLOG);
+    if (retval < 0) {
+        perror("Error listening for connections");
+        exit(1);
+    }
+
+	return sock;
+}
+
+/**
+ * Sit around forever accepting new connections from client.
+ *
+ * @param server_sock The socket used by the server.
+ */
+void acceptConnections(const int server_sock) {
+	vector<thread> threads;
+	int num_threads = 8;
+	while (true) {
+        // Declare a socket for the client connection.
+        int sock;
+
+        /* 
+		 * Another address structure.  This time, the system will automatically
+         * fill it in, when we accept a connection, to tell us where the
+         * connection came from.
+		 */
+        struct sockaddr_in remote_addr;
+        unsigned int socklen = sizeof(remote_addr); 
+
+        /* 
+		 * Accept the first waiting connection from the server socket and
+         * populate the address information.  The result (sock) is a socket
+         * descriptor for the conversation with the newly connected client.  If
+         * there are no pending connections in the back log, this function will
+         * block indefinitely while waiting for a client connection to be made.
+         */
+        sock = accept(server_sock, (struct sockaddr*) &remote_addr, &socklen);
+        if (sock < 0) {
+            perror("Error accepting connection");
+            exit(1);
+        }
+
+        /* 
+		 * At this point, you have a connected socket (named sock) that you can
+         * use to send() and recv(). The handleClient function should handle all
+		 * of the sending and receiving to/from the client.
+		 *
+		 * TODO: You shouldn't call handleClient directly here. Instead it
+		 * should be called from a separate thread. You'll just need to put sock
+		 * in a shared buffer that is synchronized using condition variables.
+		 * You'll implement this shared buffer in one of the labs and can use
+		 * it directly here.
+		 */
+
+		handleClient(sock);
+    }
+
+
+/**
+ * This function activates the many threads that we will be using to use the
+ * threads in the acceptConnections to run handleClient function
+ */
+void createThreads(vector<thread> threads, client_sock) {
+	
+	for (int i = 0; i < num_threads; i++) {
+		threads.push_back(thread(handle_client, i, client_sock));
+	}
+
+	// Wait for each thread to finish using the join function.
+	for (size_t i = 0; i < threads.size(); i++) {
+		threads[i].join();
+	}
+	return;
+}
