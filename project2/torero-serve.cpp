@@ -60,7 +60,8 @@ void badRequest(const int client_sock);
 void notFoundRequest(const int client_sock);
 void okayResponse(const int client_sock, string file_type);
 void contentResponse(const int client_sock, string file_name);
-
+void send_dir(int client_sock, string file_name);
+void send_page(int client_sock, string file_name);
 
 int main(int argc, char** argv) {
 	/* Make sure the user called our program correctly. */
@@ -154,53 +155,76 @@ void handleClient(const int client_sock) {
 	received_lines.push_back(received_str.substr(prev));
  	
 	//Check if valid request
-	std::regex http_request_regex("GET /([a-zA-Z0-9_\\-\\.]*) HTTP/1\\.1\r\n\r\n",
-                 std::regex_constants::ECMAScript);
- 	std::smatch request_match;	
-	//if (! std::regex_match(received_lines[0], request_match, http_request_regex)) {
-	//	badRequest(client_sock);
-	//	close(client_sock);
-	//	return;
-	//}
-
+    // This is a regex that matches all valid requests
+	std::regex http_request_regex("GET( *)/([a-zA-Z0-9_\\-/.]*)( *)HTTP/([0-9]*).([0-9]*)",
+	             std::regex_constants::ECMAScript);
+ 	std::smatch request_match;
+	// if no match send badRequest message
+	if (! std::regex_match(received_lines[0], request_match, http_request_regex)) {
+		cout << "BAD REQUEST" << std::endl;
+		badRequest(client_sock);
+		close(client_sock);
+		return;
+	}
+	
 	//Process the data to determine request
  	int end_index = received_lines[0].find(" ", 4) - 4;
 	string file_name = received_lines[0].substr(4, end_index);
-	//cout << file_name + " <-file name\n";
-	// TODO
+	
 	// Step 3: Generate HTTP response message based on the request you received.
 	if (file_name == "/favicon.ico"){
 		close(client_sock);
 		return;
 	}
-	if (file_name == "/"){
-		file_name = "/index.html";
-	}
-	// Check if file exists in system
-	
 	
 	// parse file type
+	cout << file_name.back() << "<- last char" << std::endl;
+	if (file_name.back() == '/'){
+		send_dir(client_sock, file_name);
+	}
+	else{
+		send_page(client_sock, file_name);
+	}
+	// Close connection with client.
+	close(client_sock);
+}
+
+void send_dir(int client_sock, string file_name){
+	file_name += "index.html";
+	cout << file_name << std::endl;
+	std::ifstream file("WWW/" + file_name, std::ios::binary);
+	if (file.is_open()){
+		send_page(client_sock, file_name);
+		file.close();
+		return;
+	}
+	// TODO BRING THE BELOW CODE BACK WHEN WORKING
+	/*else{
+		okayResponse(client_sock, "text/html");
+		string dir_html = "<html>\n<body>\n<ul>";
+		std::cout << "got here" << std::endl;
+		for (const auto& entry: fs::directory_iterator("WWW/home")) {
+			std::cout << entry.path() << "\n" << std::endl;
+		}
+	}*/
+}
+
+void send_page(int client_sock, string file_name){
+	// Step 4: Send response to client using the sendData function.
+	//TODO make this code faster	
+	std::ifstream file("WWW/" + file_name, std::ios::binary);
 	int start_index = file_name.find(".") + 1;
 	string file_type = file_name.substr(start_index);
-	//cout << "File type: " + file_type + "\n";	
-	// Step 4: Send response to client using the sendData function.
-	// sendData(client_sock, request_string.c_str(), request_string.length());
-	
-	std::ifstream file("WWW/" + file_name, std::ios::binary);
 	if (! file.is_open()){
 		notFoundRequest(client_sock);
-		close(client_sock);
-		return;	
+		return;
 	}
 	file.close();
 	// CHANGE THIS FOR LATER
 	okayResponse(client_sock, file_type);
 	contentResponse(client_sock, file_name);	
-	
-	//sendData(client_sock, HTTP_Response.c_str(), HTTP_Response.length());
-	// Close connection with client.
-	close(client_sock);
-}
+}	
+
 /**
  * Bad request void function
  */
@@ -346,7 +370,9 @@ int createSocketAndListen(const int port_num) {
  * @param server_sock The socket used by the server.
  */
 void acceptConnections(const int server_sock) {
-    while (true) {
+	vector<thread> threads;
+	int num_threads = 8;
+	while (true) {
         // Declare a socket for the client connection.
         int sock;
 
@@ -382,6 +408,24 @@ void acceptConnections(const int server_sock) {
 		 * You'll implement this shared buffer in one of the labs and can use
 		 * it directly here.
 		 */
+
 		handleClient(sock);
     }
+
+
+/**
+ * This function activates the many threads that we will be using to use the
+ * threads in the acceptConnections to run handleClient function
+ */
+void createThreads(vector<thread> threads, client_sock) {
+	
+	for (int i = 0; i < num_threads; i++) {
+		threads.push_back(thread(handle_client, i, client_sock));
+	}
+
+	// Wait for each thread to finish using the join function.
+	for (size_t i = 0; i < threads.size(); i++) {
+		threads[i].join();
+	}
+	return;
 }
