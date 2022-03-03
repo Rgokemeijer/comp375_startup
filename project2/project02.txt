@@ -1,9 +1,9 @@
 COMP 375 - Project 2 (Web Server)
 
-1. Partner 1's FULL Name:
-   Partner 1's USD Email Address:
-   Partner 2's FULL Name:
-   Partner 2's USD Email Address:
+1. Partner 1's FULL Name: Russell Gokemeijer
+   Partner 1's USD Email Address: RGokemeijer@sandiego.edu
+   Partner 2's FULL Name: Matthew Gloriani
+   Partner 2's USD Email Address:MatthewGloriani@sandiego.edu
 
 
 2. A typed copy of USD's academic integrity pledge, followed by each partners'
@@ -13,19 +13,35 @@ COMP 375 - Project 2 (Web Server)
    the document found here: https://www.sandiego.edu/conduct/documents/HonorCode.pdf
    To be clear, it is the text that starts, "I pledge to demonstrate...".
 
+I pledge to demonstrate personal and academic integrity in all matters with
+my fellow students, the faculty, and the administration here at USD. I promise to be
+honest and accountable for my actions; and to uphold the statutes of scholastic honesty
+to better myself and those around me.
+
+- Russell Gokemeijer and Matthew Gloriani
 
 3. The estimated number of hours spent working on the project.
-		- Time spent partner 1 spent working alone:
-		- Time spent partner 2 spent working alone:
-		- Time spent working together:
+		- Time spent partner 1 spent working alone: 1
+		- Time spent partner 2 spent working alone: 0
+		- Time spent working together: 13
 
 
 4. A list of missing features and/or known bugs. (Put "None if there aren't
    any.)
-
+No known missing features or bugs.
 
 5. Did you submit on time? (If not, it will counted as your late submission)
-
+Well not yet but we will
 
 6. (Optional) Any feedback you with to give me relating the project (e.g. Was it
    interesting? How could it be improved?)
+
+I think that this project is good but is unnecessarily long. Learning C++ for
+the first time in a project this long also made it more difficult. I think
+that the idea of creating a server is very good for learning but some of the
+extra implementaion was unnecesary. 
+
+For example the REGEX and threads add little to the projects focus of servers.
+That part maybe could be part of the starter code. My longest project before
+this took maybe 5 hours and this one took 14, part of that is surely not doing
+it very efficiently but it is still extreme.
