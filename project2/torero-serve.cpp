@@ -53,25 +53,29 @@ static const int BACKLOG = 10;
 
 // forward declarations
 int createSocketAndListen(const int port_num);
-void acceptConnections(const int server_sock);
+void acceptConnections(const int server_sock, string base_dir);
 void handleClient(const int client_sock);
 void sendData(int socked_fd, const char *data, size_t data_length);
 int receiveData(int socked_fd, char *dest, size_t buff_size);
 void badRequest(const int client_sock);
 void notFoundRequest(const int client_sock);
 void okayResponse(const int client_sock, string file_type);
-void contentResponse(const int client_sock, string file_name);
-void check_dir(int client_sock, string file_name);
-void send_page(int client_sock, string file_name);
-void send_dir(int client_sock, string file_name);
-void create_threads(int* myArray, int &count, std::mutex &get_mutex);
+void contentResponse(const int client_sock, string file_name, string base_dir);
+void check_dir(int client_sock, string file_name, string base_dir);
+void send_page(int client_sock, string file_name, string base_dir);
+void send_dir(int client_sock, string file_name, string base_dir);
+void thread_function(int &count, int &tail, int buff_size, string base_dir, int sock_buff[], std::mutex &count_mutex, std::mutex &get_mutex);
 
 
+
+/**
+ * Main function that runs the server and other functions
+ */
 int main(int argc, char** argv) {
 	/* Make sure the user called our program correctly. */
 	if (argc != 3) {
-		// TODO: print a proper error message informing user of proper usage
 		cout << "INCORRECT USAGE!\n";
+		cout << "Proper Usage ./torero-serve 7101 \"some dir\"\n";
 		exit(1);
 	}	
 
@@ -83,7 +87,7 @@ int main(int argc, char** argv) {
 	int server_sock = createSocketAndListen(port);
 
 	/* Now let's start accepting connections. */
-	acceptConnections(server_sock);
+	acceptConnections(server_sock, argv[2]);
 
     close(server_sock);
 
@@ -99,13 +103,16 @@ int main(int argc, char** argv) {
  * @param data_length Number of bytes of data to send.
  */
 void sendData(int socked_fd, const char *data, size_t data_length) {
-	// TODO: Wrap the following code in a loop so that it keeps sending until
+	// This keeps sending until
 	// the data has been completely sent.
-	
-	int num_bytes_sent = send(socked_fd, data, data_length, 0);
-	if (num_bytes_sent == -1) {
-		std::error_code ec(errno, std::generic_category());
-		throw std::system_error(ec, "send failed");
+	size_t total_sent = 0;
+	while (total_sent != data_length){	
+		int num_bytes_sent = send(socked_fd, data, data_length, 0);
+		if (num_bytes_sent == -1) {
+			std::error_code ec(errno, std::generic_category());
+			throw std::system_error(ec, "send failed");
+		}
+		total_sent += num_bytes_sent;
 	}
 }
 
@@ -137,7 +144,7 @@ int receiveData(int socked_fd, char *dest, size_t buff_size) {
  *
  * @param client_sock The client's socket file descriptor.
  */
-void handleClient(const int client_sock) {
+void handleClient(const int client_sock, string base_dir) {
 	// Step 1: Receive the request message from the client
 	char received_data[2048];
 	int bytes_received = receiveData(client_sock, received_data, 2048);
@@ -182,31 +189,45 @@ void handleClient(const int client_sock) {
 	
 	// parse file type
 	if (file_name.back() == '/'){
-		check_dir(client_sock, file_name);
+		check_dir(client_sock, file_name, base_dir);
 	}
 	else{
-		send_page(client_sock, file_name);
+		send_page(client_sock, file_name, base_dir);
 	}
 	// Close connection with client.
 	close(client_sock);
 }
 
-void check_dir(int client_sock, string file_name){
-	if (fs::is_regular_file("WWW" + file_name + "index.html")){
-		send_page(client_sock, file_name + "index.html");
+/**
+ * This checks to see if the directory is valid
+ *
+ * @param client_sock - the client sock
+ * @param file_name - the file name
+ * @param base_dir - the wanted directory on the command line
+ */
+void check_dir(int client_sock, string file_name, string base_dir){
+	if (fs::is_regular_file(base_dir + file_name + "index.html")){
+		send_page(client_sock, file_name + "index.html", base_dir);
 	}
-	else if (fs::is_directory("WWW" + file_name)){
+	else if (fs::is_directory(base_dir + file_name)){
 		okayResponse(client_sock, "html");
-		send_dir(client_sock, file_name);
+		send_dir(client_sock, file_name, base_dir);
 	}
 	else{
 		notFoundRequest(client_sock);
 	}
 }
 
-void send_dir(int client_sock, string file_name){
+/**
+ * This sends the directory in a nicely formatted HTML page
+ *
+ * @param client_sock - the client sock
+ * @param file_name - the file name
+ * @param base_dir - the wanted directory on the command line
+ */
+void send_dir(int client_sock, string file_name, string base_dir){
 	string dir_html = "<html>\n<body>\n<ul>\n";
-	for (const auto& entry: fs::directory_iterator("WWW" + file_name)) {	
+	for (const auto& entry: fs::directory_iterator( base_dir + file_name)) {	
 		string path_name = entry.path().filename();
 		dir_html += "<li><a href=\"" + path_name + "/\">" + path_name + "/</a></li>\n";
 	}
@@ -214,13 +235,21 @@ void send_dir(int client_sock, string file_name){
 	sendData(client_sock, dir_html.c_str(), dir_html.length());
 }
 
-void send_page(int client_sock, string file_name){
+/**
+ * This sends the page that was requested by the user, or clicked on by the
+ * user using a hyperlink
+ *
+ * @param client_sock - the client sock
+ * @param file_name - the file name
+ * @param base_dir - the wanted directory on the command line
+ */
+void send_page(int client_sock, string file_name, string base_dir){
 	// Step 4: Send response to client using the sendData function.
-	if (fs::is_regular_file("WWW" + file_name)){
+	if (fs::is_regular_file( base_dir + file_name)){
 		int start_index = file_name.find(".") + 1;
 		string file_type = file_name.substr(start_index);
 		okayResponse(client_sock, file_type);
-		contentResponse(client_sock, file_name);	
+		contentResponse(client_sock, file_name, base_dir);	
 	}
 	else{
 		notFoundRequest(client_sock);
@@ -229,6 +258,8 @@ void send_page(int client_sock, string file_name){
 
 /**
  * Bad request void function
+ *
+ * @param client_sock - the client sock
  */
 void badRequest(const int client_sock) {
 	string bad_request_string = "HTTP/1.0 400 BAD REQUEST\r\n\r\n";	
@@ -237,6 +268,8 @@ void badRequest(const int client_sock) {
 
 /**
  * Not found request void function
+ *
+ * @param client_sock - the client sock
  */
 void notFoundRequest(const int client_sock) {
 	string n_found_str = "HTTP/1.0 404 NOT FOUND\r\nContent-Type: text/html\r\n\r\n<html>\n<head>\n<title>Ruh-roh! Page not found!</title>\n</head>\n<body>\n404 Page Not Found! :'( :'( :'(\n</body>\n</html>";
@@ -246,6 +279,9 @@ void notFoundRequest(const int client_sock) {
 /**
  * HTTP 200 OK response message void function
  * Also sends header
+ *
+ * @param client_sock - the client sock
+ * @param file_type - the file type (such as html, css, txt, etc.)
  */
 void okayResponse(const int client_sock, string file_type) {
 	if (file_type == "html" || file_type == "css" || file_type == "txt"){
@@ -257,21 +293,27 @@ void okayResponse(const int client_sock, string file_type) {
 	else{
 		file_type = "application/" + file_type;
 	}
-	// message
+	// messaged
 	string okay_string = "HTTP/1.0 200 OK\r\n";
 	
 	// header
 	string content_type = "Content-Type: " + file_type + "\r\n";
-	// TODO string content_length = "Content-Length: " + std::to_string(bytes_read) + "\r\n"; 
 		
 	// putting em together
 	string together = okay_string + content_type + "\r\n";
 	sendData(client_sock, together.c_str(), together.length());
 }
 
-void contentResponse(const int client_sock, string file_name){
+/**
+ * This is the content response for sending back the data to the requester
+ *
+ * @param client_sock - the client sock
+ * @param file_name - the file name
+ * @param base_dir - the wanted directory listed on the command line
+ */
+void contentResponse(const int client_sock, string file_name, string base_dir){
 	//read_file
-	std::ifstream file("WWW" + file_name, std::ios::binary);
+	std::ifstream file(base_dir + file_name, std::ios::binary);
 	if (! file.is_open()){
 		notFoundRequest(client_sock);
 		close(client_sock);
@@ -371,12 +413,18 @@ int createSocketAndListen(const int port_num) {
  *
  * @param server_sock The socket used by the server.
  */
-void acceptConnections(const int server_sock) {
+void acceptConnections(const int server_sock, string base_dir) {
 	const int buff_size = 20;
 	int sock_buff[buff_size];
 	int tail = 0, head = 0, count = 0;
 	std::mutex count_mutex;
-	create_threads(sock_buff, count, std::ref(count_mutex));
+	std::mutex get_mutex;
+	const int num_threads = 8;
+	vector<thread> threads;
+	for (int i = 0; i < num_threads; i++){
+		threads.push_back(thread(thread_function, std::ref(count), std::ref(tail), buff_size, base_dir, sock_buff, std::ref(count_mutex), std::ref(get_mutex)));
+		threads[i].detach();
+	}
 	while (true) {
         // Declare a socket for the client connection.
         int sock;
@@ -407,7 +455,7 @@ void acceptConnections(const int server_sock) {
          * use to send() and recv(). The handleClient function should handle all
 		 * of the sending and receiving to/from the client.
 		 *
-		 * TODO: You shouldn't call handleClient directly here. Instead it
+		 * We don't call handleClient directly here. Instead it
 		 * should be called from a separate thread. You'll just need to put sock
 		 * in a shared buffer that is synchronized using condition variables.
 		 * You'll implement this shared buffer in one of the labs and can use
@@ -421,16 +469,35 @@ void acceptConnections(const int server_sock) {
 		count += 1;
 		count_mutex.unlock();
 		head = (head + 1) % buff_size;
-
-		//handleClient(sock);
     }
 }
 
-
 /**
- * This function activates the many threads that we will be using to use the
- * threads in the acceptConnections to run handleClient function
+ * This is the thread function that implements the threads for running
+ * multiple browsers for the user, or multiple users
+ *
+ * @param count - an incrementer
+ * @param tail - the next mutex to be listed
+ * @param buff_size - the buff size
+ * @param base_dir - the wanted directory listed on the command line
+ * @param buff[] - the buff array
+ * @param count_mutex - keeps track of the count for mutexes
+ * @param get_mutex - gets the mutex to unlock and lock the threads:
  */
-void create_threads(int* myArray, int &count, std::mutex &get_mutex) {
+void thread_function(int &count, int &tail, int buff_size, string base_dir, int buff[], std::mutex &count_mutex, std::mutex &get_mutex){
+	while (true){
+		// This locks and unlocks twice to make sure 
+		get_mutex.lock();
+		while(count == 0){
+			get_mutex.unlock();
+			get_mutex.lock();	
+		}
+		count_mutex.lock();
+		count = (count - 1) % buff_size;
+		count_mutex.unlock();
+		int socket = buff[tail];
+		tail = (tail + 1) % buff_size;
+		get_mutex.unlock();
+		handleClient(socket, base_dir);
+	}
 }
-
