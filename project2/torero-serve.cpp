@@ -38,6 +38,7 @@
 #include <filesystem>
 #include <fstream>
 #include <regex>
+#include <mutex>
 
 // shorten the std::filesystem namespace down to just fs
 namespace fs = std::filesystem;
@@ -60,8 +61,11 @@ void badRequest(const int client_sock);
 void notFoundRequest(const int client_sock);
 void okayResponse(const int client_sock, string file_type);
 void contentResponse(const int client_sock, string file_name);
-void send_dir(int client_sock, string file_name);
+void check_dir(int client_sock, string file_name);
 void send_page(int client_sock, string file_name);
+void send_dir(int client_sock, string file_name);
+void create_threads(int* myArray, int &count, std::mutex &get_mutex);
+
 
 int main(int argc, char** argv) {
 	/* Make sure the user called our program correctly. */
@@ -161,7 +165,6 @@ void handleClient(const int client_sock) {
  	std::smatch request_match;
 	// if no match send badRequest message
 	if (! std::regex_match(received_lines[0], request_match, http_request_regex)) {
-		cout << "BAD REQUEST" << std::endl;
 		badRequest(client_sock);
 		close(client_sock);
 		return;
@@ -178,9 +181,8 @@ void handleClient(const int client_sock) {
 	}
 	
 	// parse file type
-	cout << file_name.back() << "<- last char" << std::endl;
 	if (file_name.back() == '/'){
-		send_dir(client_sock, file_name);
+		check_dir(client_sock, file_name);
 	}
 	else{
 		send_page(client_sock, file_name);
@@ -189,40 +191,40 @@ void handleClient(const int client_sock) {
 	close(client_sock);
 }
 
-void send_dir(int client_sock, string file_name){
-	file_name += "index.html";
-	cout << file_name << std::endl;
-	std::ifstream file("WWW/" + file_name, std::ios::binary);
-	if (file.is_open()){
-		send_page(client_sock, file_name);
-		file.close();
-		return;
+void check_dir(int client_sock, string file_name){
+	if (fs::is_regular_file("WWW" + file_name + "index.html")){
+		send_page(client_sock, file_name + "index.html");
 	}
-	// TODO BRING THE BELOW CODE BACK WHEN WORKING
-	/*else{
-		okayResponse(client_sock, "text/html");
-		string dir_html = "<html>\n<body>\n<ul>";
-		std::cout << "got here" << std::endl;
-		for (const auto& entry: fs::directory_iterator("WWW/home")) {
-			std::cout << entry.path() << "\n" << std::endl;
-		}
-	}*/
+	else if (fs::is_directory("WWW" + file_name)){
+		okayResponse(client_sock, "html");
+		send_dir(client_sock, file_name);
+	}
+	else{
+		notFoundRequest(client_sock);
+	}
+}
+
+void send_dir(int client_sock, string file_name){
+	string dir_html = "<html>\n<body>\n<ul>\n";
+	for (const auto& entry: fs::directory_iterator("WWW" + file_name)) {	
+		string path_name = entry.path().filename();
+		dir_html += "<li><a href=\"" + path_name + "/\">" + path_name + "/</a></li>\n";
+	}
+	dir_html += "</ul>\n</body>\n</html>";
+	sendData(client_sock, dir_html.c_str(), dir_html.length());
 }
 
 void send_page(int client_sock, string file_name){
 	// Step 4: Send response to client using the sendData function.
-	//TODO make this code faster	
-	std::ifstream file("WWW/" + file_name, std::ios::binary);
-	int start_index = file_name.find(".") + 1;
-	string file_type = file_name.substr(start_index);
-	if (! file.is_open()){
-		notFoundRequest(client_sock);
-		return;
+	if (fs::is_regular_file("WWW" + file_name)){
+		int start_index = file_name.find(".") + 1;
+		string file_type = file_name.substr(start_index);
+		okayResponse(client_sock, file_type);
+		contentResponse(client_sock, file_name);	
 	}
-	file.close();
-	// CHANGE THIS FOR LATER
-	okayResponse(client_sock, file_type);
-	contentResponse(client_sock, file_name);	
+	else{
+		notFoundRequest(client_sock);
+	}
 }	
 
 /**
@@ -237,7 +239,7 @@ void badRequest(const int client_sock) {
  * Not found request void function
  */
 void notFoundRequest(const int client_sock) {
-	string n_found_str = "HTTP/1.0 404 NOT FOUND\r\n\r\n<html>\n<head>\n<title>Ruh-roh! Page not found!</title>\n</head>\n<body>\n404 Page Not Found! :'( :'( :'(\n</body>\n</html>";
+	string n_found_str = "HTTP/1.0 404 NOT FOUND\r\nContent-Type: text/html\r\n\r\n<html>\n<head>\n<title>Ruh-roh! Page not found!</title>\n</head>\n<body>\n404 Page Not Found! :'( :'( :'(\n</body>\n</html>";
 	sendData(client_sock, n_found_str.c_str(), n_found_str.length());
 }
 
@@ -260,7 +262,7 @@ void okayResponse(const int client_sock, string file_type) {
 	
 	// header
 	string content_type = "Content-Type: " + file_type + "\r\n";
-	//string content_length = "Content-Length: " + std::to_string(bytes_read) + "\r\n"; 
+	// TODO string content_length = "Content-Length: " + std::to_string(bytes_read) + "\r\n"; 
 		
 	// putting em together
 	string together = okay_string + content_type + "\r\n";
@@ -269,7 +271,7 @@ void okayResponse(const int client_sock, string file_type) {
 
 void contentResponse(const int client_sock, string file_name){
 	//read_file
-	std::ifstream file("WWW/" + file_name, std::ios::binary);
+	std::ifstream file("WWW" + file_name, std::ios::binary);
 	if (! file.is_open()){
 		notFoundRequest(client_sock);
 		close(client_sock);
@@ -370,8 +372,11 @@ int createSocketAndListen(const int port_num) {
  * @param server_sock The socket used by the server.
  */
 void acceptConnections(const int server_sock) {
-	vector<thread> threads;
-	int num_threads = 8;
+	const int buff_size = 20;
+	int sock_buff[buff_size];
+	int tail = 0, head = 0, count = 0;
+	std::mutex count_mutex;
+	create_threads(sock_buff, count, std::ref(count_mutex));
 	while (true) {
         // Declare a socket for the client connection.
         int sock;
@@ -408,24 +413,24 @@ void acceptConnections(const int server_sock) {
 		 * You'll implement this shared buffer in one of the labs and can use
 		 * it directly here.
 		 */
+		while (count == buff_size){} //Wait until a spot is open
+		sock_buff[head] = sock;
+		// allow threads to start processing ASAP but after added to buff and
+		// we  need to protect with mutex
+		count_mutex.lock();
+		count += 1;
+		count_mutex.unlock();
+		head = (head + 1) % buff_size;
 
-		handleClient(sock);
+		//handleClient(sock);
     }
+}
 
 
 /**
  * This function activates the many threads that we will be using to use the
  * threads in the acceptConnections to run handleClient function
  */
-void createThreads(vector<thread> threads, client_sock) {
-	
-	for (int i = 0; i < num_threads; i++) {
-		threads.push_back(thread(handle_client, i, client_sock));
-	}
-
-	// Wait for each thread to finish using the join function.
-	for (size_t i = 0; i < threads.size(); i++) {
-		threads[i].join();
-	}
-	return;
+void create_threads(int* myArray, int &count, std::mutex &get_mutex) {
 }
+
