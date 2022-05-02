@@ -1,7 +1,7 @@
 /*
  * File: jukebox-server.cpp
  *
- * Authors: (TODO: Fill this in with author info)
+ * Authors: Russell Gokemeijer, Ajay Samra
  *
  * Server for an Internet Jukebox.
  */
