@@ -1,7 +1,7 @@
 /*
  * File: jukebox-server.cpp
  *
- * Authors: Russell Gokemeijer, Ajay Samra
+ * Authors: (TODO: Fill this in with author info)
  *
  * Server for an Internet Jukebox.
  */
@@ -30,8 +30,8 @@
 #include <sys/time.h>
 #include <sys/types.h>
 
-#include "ChunkedDataSender.h"
-#include "ConnectedClient.h"
+#include "ChunkedDataSender.cpp"
+#include "ConnectedClient.cpp"
 
 namespace fs = std::filesystem;
 
@@ -344,7 +344,8 @@ void event_loop(int epoll_fd, int server_socket) {
 				// TODO: Create a new function in your ConnectedClient class
 				// and call that here, sort of like what was done for
 				// handle_input and handle_close earlier in this function.
-            }
+            	clients[events[n].data.fd].continue_response(epoll_fd);
+			}
         }
     }
 }

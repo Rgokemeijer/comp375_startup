@@ -42,6 +42,15 @@ class ConnectedClient {
 	 * @param epoll_fd File descriptor for epoll.
 	 */
 	void send_dummy_response(int epoll_fd);
+	
+	/**
+	 * Is called after receiving an EPOLLOUT message and starts sending data
+	 * again.
+	 *
+	 * @param epoll_fd File descriptor for epoll.
+	 */
+	void continue_response(int epoll_fd);
+
 
 	/**
 	 * Handles new input from the client.
