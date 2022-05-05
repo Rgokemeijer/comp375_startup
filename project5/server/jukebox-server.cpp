@@ -274,7 +274,6 @@ void setup_new_client(int server_socket,
 	// We have a new client so we'll create a new ConnectClient object to
 	// represent this new client.
 	ConnectedClient cc(client_fd, RECEIVING);
-
 	// Add this new connected client to our map from file descriptor to client.
 	clients[client_fd] = cc;
 }
