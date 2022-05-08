@@ -54,12 +54,35 @@ class ArraySender : public virtual ChunkedDataSender {
 // ChunkedDataSender interface. This class should allow the user to send a big
 // file over a socket in chunks.
 
-class FileSender : public virtual FileSender {
+class FileSender : public virtual ChunkedDataSender {
+  private:
+	char *array; // the array of data to send
+	size_t array_length; // length of the array to send (in bytes)
+	size_t curr_loc; // index in array where next send will start
 
+  public:
+
+	/**
+	 * Constructor for ArraySender class.
+	 */
 	FileSender(const char *array_to_send, size_t length);
 
+	/**
+	 * Destructor for ArraySender class.
+	 */
+	~FileSender() {
+		delete[] array;
+	}
+
+	/**
+	 * Sends the next chunk of data, starting at the spot in the array right
+	 * after the last chunk we sent.
+	 *
+	 * @param sock_fd Socket which to send the data over.
+	 * @return -1 if we couldn't send because of a full socket buffer,
+	 * 	otherwise the number of bytes actually sent over the socket.
+	 */
 	virtual ssize_t send_next_chunk(int sock_fd);
 };
-
 
 #endif // CHUNKEDDATASENDER_H

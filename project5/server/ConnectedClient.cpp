@@ -19,6 +19,7 @@ ConnectedClient::ConnectedClient(int fd, ClientState initial_state) :
 void ConnectedClient::send_dummy_response(int epoll_fd) {
 	// Create a large array, just to make sure we can send a lot of data in
 	// smaller chunks.
+	cout << "Sending Dummy Response\n";
 	char *data_to_send = new char[CHUNK_SIZE*2000];
 	memset(data_to_send, 117, CHUNK_SIZE*2000); // 117 is ascii 'u'
 

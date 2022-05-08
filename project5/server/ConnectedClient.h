@@ -14,7 +14,7 @@ enum ClientState { RECEIVING, SENDING };
  */
 class ConnectedClient {
   public:
-	// Member Variablesa (i.e. fields)
+	// Member Variables (i.e. fields)
 	int client_fd;
 	ChunkedDataSender *sender;
 	ClientState state;

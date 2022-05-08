@@ -30,8 +30,8 @@
 #include <sys/time.h>
 #include <sys/types.h>
 
-#include "ChunkedDataSender.cpp"
-#include "ConnectedClient.cpp"
+#include "ChunkedDataSender.h"
+#include "ConnectedClient.h"
 
 namespace fs = std::filesystem;
 
@@ -239,6 +239,7 @@ int find_mp3_files(const char *dir) {
  * After exiting, we'll have a new client set to RECEIVING mode, our socket to
  * that client will be non-blocking, and our epoll interest list will contain
  * this new client (watching for inputs or closes from the client).
+ * This function is called from the event loop function
  *
  * @param server_socket Socket listening for new connections.
  * @param clients Mapping between client sockets and client info
@@ -276,6 +277,7 @@ void setup_new_client(int server_socket,
 	ConnectedClient cc(client_fd, RECEIVING);
 	// Add this new connected client to our map from file descriptor to client.
 	clients[client_fd] = cc;
+	cout << "Finished setting up new client\n";
 }
 
 /**
@@ -312,6 +314,7 @@ void event_loop(int epoll_fd, int server_socket) {
 			// Check if this is an "input" event (i.e. ready to "read" from
 			// this socket)
 			else if ((events[n].events & EPOLLIN) != 0) {
+				cout << "Epoll in event: " << events[n].events << "\n";
 				if (events[n].data.fd == server_socket) {
 					/*
 					 * If the server socket is ready for "reading," that implies
@@ -319,6 +322,7 @@ void event_loop(int epoll_fd, int server_socket) {
 					 * set up that new client now.
 					 */
 					setup_new_client(server_socket, clients, epoll_fd);
+
 				}
 				else {
 					/*
@@ -326,6 +330,7 @@ void event_loop(int epoll_fd, int server_socket) {
 					 * client that has sent us data so we can receive it now
 					 * without worrying about blocking.
 					 */
+					cout << "Server received client data and is claling handle input\n";
 					clients[events[n].data.fd].handle_input(epoll_fd);
 				}
             }
@@ -343,6 +348,7 @@ void event_loop(int epoll_fd, int server_socket) {
 				// TODO: Create a new function in your ConnectedClient class
 				// and call that here, sort of like what was done for
 				// handle_input and handle_close earlier in this function.
+				cout << "Continuing a response that was interupted\n";
             	clients[events[n].data.fd].continue_response(epoll_fd);
 			}
         }
