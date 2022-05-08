@@ -1,6 +1,7 @@
 package edu.sandiego.comp375.jukebox;
 
 import java.io.BufferedInputStream;
+import java.io.DataOutputStream;
 import java.net.Socket;
 import java.util.Scanner;
 
@@ -11,6 +12,7 @@ public class AudioClient {
 	public static void main(String[] args) throws Exception {
 		Scanner s = new Scanner(System.in);
 		BufferedInputStream in = null;
+		DataOutputStream dOut = null; //Added this
 		Thread player = null;
 		int port = 0;
 		String ip;
@@ -44,6 +46,11 @@ public class AudioClient {
 						System.out.println("Connected to socket");
 						in = new BufferedInputStream(socket.getInputStream(), 2048);
 						System.out.println("Buffered reader created");
+						//THIS IS NEW CODE
+						dOut= new DataOutputStream(socket.getOutputStream());
+						dOut.writeUTF("play");
+						dOut.flush();
+						//BACK TO GIVEN CODE
 						player = new Thread(new AudioPlayerThread(in));
 						System.out.println("player created");
 						player.start();

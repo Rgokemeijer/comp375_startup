@@ -132,8 +132,64 @@ void ConnectedClient::handle_input(int epoll_fd) {
 	// list of songs or for you to send them a song?)
 	// For now, the following function call just demonstrates how you might
 	// send data.
-	this->send_dummy_response(epoll_fd);
+	if (strcmp(data, "play") == 0){
+		send_audio(epoll_fd);
+	}
+	// this->send_dummy_response(epoll_fd);
 }
+
+void ConnectedClient::send_audio(int epoll_fd){
+	// Create a large array, just to make sure we can send a lot of data in
+	// smaller chunks.
+	cout << "Sending Audio Response\n";
+	//The rest of this is not yet right
+	FileSender *file_sender = new FileSender(FILE *probably, CHUNK_SIZE*2000);
+	delete[] data_to_send; // The ArraySender creates its own copy of the data so let's delete this copy
+
+	ssize_t num_bytes_sent;
+	ssize_t total_bytes_sent = 0;
+
+	// keep sending the next chunk until it says we either didn't send
+	// anything (0 return indicates nothing left to send) or until we can't
+	// send anymore because of a full socket buffer (-1 return value)
+	while((num_bytes_sent = array_sender->send_next_chunk(this->client_fd)) > 0) {
+		total_bytes_sent += num_bytes_sent;
+	}
+	cout << "sent " << total_bytes_sent << " bytes to client\n";
+
+	/*
+	 * TODO: if the last call to send_next_chunk indicated we couldn't send
+	 * anything because of a full socket buffer, we should do the following:
+	 *
+	 * 1. update our state field to be sending
+	 * 2. set our sender field to be the ArraySender object we created
+	 * 3. update epoll so that it also watches for EPOLLOUT for this client
+	 *    socket (use epoll_ctl with EPOLL_CTL_MOD).
+	 *
+	 * WARNING: These steps are to be done inside of the following if statement,
+	 * not before it.
+	 */
+	if (num_bytes_sent < 0) {
+		// Fill this in with the three steps listed in the comment above.
+		// WARNING: Do NOT delete array_sender here (you'll need it to continue
+		// sending later).
+		this->state = SENDING;
+		this->sender = array_sender;
+		struct epoll_event client_ev;
+		client_ev.data.fd = this->client_fd;
+		client_ev.events = EPOLLIN;
+		if(epoll_ctl(epoll_fd, EPOLL_CTL_MOD, this->client_fd, &client_ev) == -1){
+			perror("Error updating epoll to watch for EPOLLOUT");
+			exit(1);	
+		}
+	}
+	else {
+		// Sent everything with no problem so we are done with our ArraySender
+		// object.
+		delete array_sender;
+	}
+}
+
 
 
 // You likely should not need to modify this function.

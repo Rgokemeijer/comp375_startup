@@ -42,6 +42,13 @@ class ConnectedClient {
 	 * @param epoll_fd File descriptor for epoll.
 	 */
 	void send_dummy_response(int epoll_fd);
+
+	/**
+	 * Sends a response of the current audio file to the client.
+	 *
+	 * @param epoll_fd File descriptor for epoll.
+	 */
+	void send_audio(int epoll_fd);
 	
 	/**
 	 * Is called after receiving an EPOLLOUT message and starts sending data
