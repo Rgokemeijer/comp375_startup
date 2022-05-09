@@ -34,6 +34,7 @@
 #include "ConnectedClient.h"
 
 namespace fs = std::filesystem;
+using std::ifstream;
 
 using std::cout;
 using std::cerr;
@@ -91,7 +92,7 @@ int main(int argc, char **argv) {
 		perror("epoll_ctl");
 		exit(EXIT_FAILURE);
 	}
-
+	
 	event_loop(epoll_fd, serv_sock);
 }
 
