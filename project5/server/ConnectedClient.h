@@ -48,7 +48,7 @@ class ConnectedClient {
 	 *
 	 * @param epoll_fd File descriptor for epoll.
 	 */
-	void send_audio(int epoll_fd);
+	void send_audio(int epoll_fd, fs::path file_path);
 	
 	/**
 	 * Is called after receiving an EPOLLOUT message and starts sending data
@@ -64,7 +64,7 @@ class ConnectedClient {
 	 *
 	 * @param epoll_fd File descriptor for epoll.
 	 */
-	void handle_input(int epoll_fd);
+	void handle_input(int epoll_fd, vector<fs::path> song_list);
 
 	/**
 	 * Handles a close request from the client.

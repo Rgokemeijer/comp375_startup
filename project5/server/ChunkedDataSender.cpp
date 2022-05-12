@@ -4,8 +4,14 @@
 #include <cerrno>
 #include <cstdio>
 
+#include <fstream>
+#include <filesystem>
+
 #include <sys/types.h>
 #include <sys/socket.h>
+
+namespace fs = std::filesystem;
+
 
 #include "ChunkedDataSender.h"
 
@@ -54,11 +60,8 @@ ssize_t ArraySender::send_next_chunk(int sock_fd) {
 	
 }
 
-FileSender::FileSender(const char *array_to_send, size_t length) {
-	this->array = new char[length];
-	std::copy(array_to_send, array_to_send+length, this->array);
-	this->array_length = length;
-	this->curr_loc = 0;
+FileSender::FileSender(fs::path song_path) {
+	this->indata = new ifstream (song_path.c_str());
 }
 
 ssize_t FileSender::send_next_chunk(int sock_fd) {

@@ -58,22 +58,22 @@ class ArraySender : public virtual ChunkedDataSender {
 
 class FileSender : public virtual ChunkedDataSender {
   private:
-	ifstream *file_array; // the array of file streams of data to send
-	size_t num_files; // number of files to send (in bytes)
-	size_t curr_loc; // index in array where next send will start
+	
+	ifstream *indata;
 
   public:
 
 	/**
 	 * Constructor for ArraySender class.
 	 */
-	FileSender(const char *array_to_send, size_t length);
+	FileSender(fs::path song_path);
 
 	/**
 	 * Destructor for ArraySender class.
 	 */
 	~FileSender() {
-		delete[] file_array;
+		//TODO figure this out
+		// delete[] array;
 	}
 
 	/**

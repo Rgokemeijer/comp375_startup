@@ -49,8 +49,8 @@ const int MAX_EVENTS = 64;
 int accept_connection(int server_socket);
 int setup_server_socket(uint16_t port_num);
 void set_non_blocking(int sock);
-int find_mp3_files(const char *dir);
-void event_loop(int epoll_fd, int server_socket);
+vector<fs::path> find_mp3_files(const char *dir);
+void event_loop(int epoll_fd, int server_socket, vector<fs::path> song_list);
 
 int main(int argc, char **argv) {
     if (argc != 3) {
@@ -72,8 +72,8 @@ int main(int argc, char **argv) {
 	 * Read the other argument (mp3 directory).
 	 * See the notes for this function above.
 	 */
-    int song_count = find_mp3_files(argv[2]);
-    cout << "Found " << song_count << " songs.\n";
+    vector<fs::path> song_list = find_mp3_files(argv[2]);
+    cout << "Found " << song_list.size() << " songs.\n";
 
 	// Create the epoll, which returns a file descriptor for us to use later.
 	int epoll_fd = epoll_create1(0);
@@ -93,7 +93,7 @@ int main(int argc, char **argv) {
 		exit(EXIT_FAILURE);
 	}
 	
-	event_loop(epoll_fd, serv_sock);
+	event_loop(epoll_fd, serv_sock, song_list);
 }
 
 /**
@@ -206,9 +206,9 @@ void set_non_blocking(int sock) {
  *
  * @return Number of MP3 files found inside of the specified directory.
  */
-int find_mp3_files(const char *dir) {
+ vector<fs::path> find_mp3_files(const char *dir) {
 	int num_mp3_files = 0;
-
+	vector<fs::path> list;
 	// Loop through all files in the directory
 	for(fs::directory_iterator entry(dir); entry != fs::directory_iterator(); ++entry) {
 		string filename = entry->path().filename().string();
@@ -218,6 +218,8 @@ int find_mp3_files(const char *dir) {
 			cout << "(" << num_mp3_files << ") " << filename << "\n";
 			num_mp3_files++;
 
+			//
+			list.push_back(entry->path());
 			// Look for an associated info file
 			fs::path info_file_path = entry->path();
 			info_file_path = info_file_path.replace_extension(".mp3.info");
@@ -231,7 +233,7 @@ int find_mp3_files(const char *dir) {
 		}
 	}
 
-    return num_mp3_files;
+    return list;
 }
 
 /**
@@ -287,7 +289,7 @@ void setup_new_client(int server_socket,
  * @param epoll_fd File descriptor for our epoll.
  * @param server_socket Socket that is listening for connections.
  */
-void event_loop(int epoll_fd, int server_socket) {
+void event_loop(int epoll_fd, int server_socket, vector<fs::path> song_list) {
 	// associate client's file descriptor with its ConnectedClient object
 	map<int, ConnectedClient> clients;
 
@@ -332,7 +334,7 @@ void event_loop(int epoll_fd, int server_socket) {
 					 * without worrying about blocking.
 					 */
 					cout << "Server received client data and is claling handle input\n";
-					clients[events[n].data.fd].handle_input(epoll_fd);
+					clients[events[n].data.fd].handle_input(epoll_fd, song_list);
 				}
             }
 

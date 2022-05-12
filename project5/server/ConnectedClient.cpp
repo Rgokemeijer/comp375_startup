@@ -7,11 +7,17 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+#include <vector>
+#include <filesystem>
+#include <fstream>
+
 #include "ChunkedDataSender.h"
 #include "ConnectedClient.h"
 
 using std::cout;
 using std::cerr;
+using std::vector;
+namespace fs = std::filesystem;
 
 ConnectedClient::ConnectedClient(int fd, ClientState initial_state) :
 	client_fd(fd), sender(NULL), state(initial_state) {}
@@ -112,7 +118,7 @@ void ConnectedClient::continue_response(int epoll_fd) {
 	}
 }
 
-void ConnectedClient::handle_input(int epoll_fd) {
+void ConnectedClient::handle_input(int epoll_fd, vector<fs::path> song_list) {
 	cout << "Ready to read from client " << this->client_fd << "\n";
 	char data[1024];
 	ssize_t bytes_received = recv(this->client_fd, data, 1024, 0);
@@ -132,19 +138,21 @@ void ConnectedClient::handle_input(int epoll_fd) {
 	// list of songs or for you to send them a song?)
 	// For now, the following function call just demonstrates how you might
 	// send data.
+	int song_id;
 	if (strcmp(data, "play") == 0){
-		send_audio(epoll_fd);
+		send_audio(epoll_fd, song_list.at(song_id));
 	}
 	// this->send_dummy_response(epoll_fd);
 }
 
-void ConnectedClient::send_audio(int epoll_fd){
+void ConnectedClient::send_audio(int epoll_fd, fs::path song_path){
 	// Create a large array, just to make sure we can send a lot of data in
 	// smaller chunks.
 	cout << "Sending Audio Response\n";
+
 	//The rest of this is not yet right
-	FileSender *file_sender = new FileSender(FILE *probably, CHUNK_SIZE*2000);
-	delete[] data_to_send; // The ArraySender creates its own copy of the data so let's delete this copy
+	ifstream indata (song_path); // Create ifstram object from path
+	FileSender *file_sender = new FileSender(song_path); // pass this object to the File
 
 	ssize_t num_bytes_sent;
 	ssize_t total_bytes_sent = 0;
@@ -152,7 +160,7 @@ void ConnectedClient::send_audio(int epoll_fd){
 	// keep sending the next chunk until it says we either didn't send
 	// anything (0 return indicates nothing left to send) or until we can't
 	// send anymore because of a full socket buffer (-1 return value)
-	while((num_bytes_sent = array_sender->send_next_chunk(this->client_fd)) > 0) {
+	while((num_bytes_sent = file_sender->send_next_chunk(this->client_fd)) > 0) {
 		total_bytes_sent += num_bytes_sent;
 	}
 	cout << "sent " << total_bytes_sent << " bytes to client\n";
@@ -174,7 +182,7 @@ void ConnectedClient::send_audio(int epoll_fd){
 		// WARNING: Do NOT delete array_sender here (you'll need it to continue
 		// sending later).
 		this->state = SENDING;
-		this->sender = array_sender;
+		this->sender = file_sender;
 		struct epoll_event client_ev;
 		client_ev.data.fd = this->client_fd;
 		client_ev.events = EPOLLIN;
@@ -186,7 +194,7 @@ void ConnectedClient::send_audio(int epoll_fd){
 	else {
 		// Sent everything with no problem so we are done with our ArraySender
 		// object.
-		delete array_sender;
+		delete file_sender;
 	}
 }
 
