@@ -127,21 +127,27 @@ void ConnectedClient::handle_input(int epoll_fd, vector<fs::path> song_list) {
 		exit(EXIT_FAILURE);
 	}
 
-	cout << "Received data: ";
-	for (int i = 0; i < bytes_received; i++)
-		cout << data[i];
-
-	cout << "\n";
+	// if (strcmp(data[0], "\0") == 0){
+		// for (int i = 0; i < bytes_received; i++){
+		// 	data[i] = data[i + 1];
+		// }
+	// }
+	char formatted[1023];
+	memcpy(formatted, data+1, 1023);
+	for (int i = 0; i < 15; i++)
+		cout << "data: " << i << ": \"" << data[i] << "\"\n";
 
 	// TODO: Eventually you need to actually look at the response and send a
 	// response based on what you got from the client (e.g. did they ask for a
 	// list of songs or for you to send them a song?)
 	// For now, the following function call just demonstrates how you might
 	// send data.
-	int song_id;
-	if (strcmp(data, "play") == 0){
+	int song_id = 0;
+	cout << "Command was \"" << formatted << "\"\n";
+	// if (strcmp(formatted, "play") == 0){ // Bring pack
+		cout << "about to call send_audio\n";
 		send_audio(epoll_fd, song_list.at(song_id));
-	}
+	// }
 	// this->send_dummy_response(epoll_fd);
 }
 

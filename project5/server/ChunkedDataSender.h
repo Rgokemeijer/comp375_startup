@@ -5,6 +5,8 @@
 
 using std::ifstream;
 
+namespace fs = std::filesystem;
+
 const size_t CHUNK_SIZE = 4096;
 
 /**
@@ -60,6 +62,8 @@ class FileSender : public virtual ChunkedDataSender {
   private:
 	
 	ifstream *indata;
+	int file_length;
+	int curr_loc;
 
   public:
 

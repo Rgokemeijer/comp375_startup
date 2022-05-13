@@ -1,6 +1,10 @@
 #ifndef CONNECTEDCLIENT_H
 #define CONNECTEDCLIENT_H
 
+#include <vector>
+
+using std::vector;
+
 /**
  * Represents the state of a connected client.
  */

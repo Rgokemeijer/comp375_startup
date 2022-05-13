@@ -37,6 +37,8 @@ public class AudioClient {
 		while (true) {
 			System.out.print(">> ");
 			String command = s.nextLine();
+			// TODO parse input and get command as well as song immediately
+			// user types play 1 
 			if (command.equals("play")) {
 				try {
 					System.out.println("About to attemp to connect");
@@ -47,11 +49,19 @@ public class AudioClient {
 						in = new BufferedInputStream(socket.getInputStream(), 2048);
 						System.out.println("Buffered reader created");
 						//THIS IS NEW CODE
-						dOut= new DataOutputStream(socket.getOutputStream());
+						dOut = new DataOutputStream(socket.getOutputStream());
 						dOut.writeUTF("play");
-						dOut.flush();
+						dOut.flush(); // send play to server
 						//BACK TO GIVEN CODE
-						player = new Thread(new AudioPlayerThread(in));
+						// int i = 0;
+						// while(i<10000){
+						// 	System.out.print((char)in.read());
+						// 	i++;
+						// }
+						//Delete above
+						AudioPlayerThread thread = new AudioPlayerThread(in);
+						System.out.println("APT was created");
+						player = new Thread(thread);
 						System.out.println("player created");
 						player.start();
 						System.out.println("player started");

@@ -25,11 +25,18 @@ public class AudioPlayerThread implements Runnable {
 
 	public AudioPlayerThread(BufferedInputStream is) throws Exception {
 		this.in = is;
+		System.out.println("spot 1");
 		ais = AudioSystem.getAudioInputStream(in);
+		System.out.println("spot 2");
 		final AudioFormat outFormat = AudioPlayerThread.getOutFormat(ais.getFormat());
+		System.out.println("spot 3");
 		final Info info = new Info(SourceDataLine.class, outFormat);
+		System.out.println("spot 4");
 		this.sdl = (SourceDataLine)AudioSystem.getLine(info);
+		System.out.println("spot 5");
 		this.ais2 = AudioSystem.getAudioInputStream(outFormat, ais);
+		System.out.println("spot 6");
+
 		sdl.open(outFormat);
 	}
 
