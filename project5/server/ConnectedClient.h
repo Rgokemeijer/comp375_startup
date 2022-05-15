@@ -2,8 +2,10 @@
 #define CONNECTEDCLIENT_H
 
 #include <vector>
+#include <string>
 
 using std::vector;
+using std::string;
 
 /**
  * Represents the state of a connected client.
@@ -76,6 +78,11 @@ class ConnectedClient {
 	 * @param epoll_fd File descriptor for epoll.
 	 */
 	void handle_close(int epoll_fd);
+
+
+	void list(int epoll_fd, char *dir);
+
+	void send_message(int epoll_fd, string DataToSend);
 };
 
 #endif

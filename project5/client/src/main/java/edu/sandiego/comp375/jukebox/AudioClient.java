@@ -37,10 +37,14 @@ public class AudioClient {
 		while (true) {
 			System.out.print(">> ");
 			String command = s.nextLine();
-			// TODO parse input and get command as well as song immediately
-			// user types play 1 
-			if (command.equals("play")) {
+			String commands[] = command.split(" ", 2);
+			if (commands[0].equals("play")) {
 				try {
+					if (player != null){
+						player.stop();
+					}
+					// This will throw an error if the command is invalid
+					Integer.valueOf(commands[1]); 
 					System.out.println("About to attemp to connect");
 					Socket socket = new Socket(ip, port);
 					System.out.println("Attempted to connect to socket.");
@@ -50,15 +54,9 @@ public class AudioClient {
 						System.out.println("Buffered reader created");
 						//THIS IS NEW CODE
 						dOut = new DataOutputStream(socket.getOutputStream());
-						dOut.writeUTF("play");
+						dOut.writeUTF(command);
 						dOut.flush(); // send play to server
 						//BACK TO GIVEN CODE
-						// int i = 0;
-						// while(i<10000){
-						// 	System.out.print((char)in.read());
-						// 	i++;
-						// }
-						//Delete above
 						AudioPlayerThread thread = new AudioPlayerThread(in);
 						System.out.println("APT was created");
 						player = new Thread(thread);
@@ -76,6 +74,9 @@ public class AudioClient {
 				// playing.
 				// Your final solution should make sure that the exit command
 				// causes music to stop playing immediately.
+				if (player != null){
+					player.stop();
+				}
 				System.out.println("Goodbye!");
 				break;
 			}

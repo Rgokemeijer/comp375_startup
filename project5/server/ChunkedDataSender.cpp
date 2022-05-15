@@ -76,8 +76,6 @@ ssize_t FileSender::send_next_chunk(int sock_fd) {
 	// to send in the array, whichever is smaller.
 	size_t num_bytes_remaining = file_length - curr_loc;
 	size_t bytes_in_chunk = std::min(num_bytes_remaining, CHUNK_SIZE);
-
-    cout << "Reading " << bytes_in_chunk << " characters... ";
     // read data as a block:
 
 	if (bytes_in_chunk > 0) {
@@ -110,4 +108,3 @@ ssize_t FileSender::send_next_chunk(int sock_fd) {
 		return 0;
 	}
 }
-
