@@ -218,3 +218,25 @@ void ConnectedClient::handle_close(int epoll_fd) {
 	close(this->client_fd);
 }
 
+//WHAT I'VE ADDED 
+void ConnectedClient::list(int epoll_fd, char *dir) {
+	int num_mp3_files = 0;
+	int info_files = 0;
+
+	string filename = "";
+	// Loop through all files in the directory
+	for(fs::directory_iterator entry(dir); entry != fs::directory_iterator(); ++entry) {
+		// See if the current file is an MP3 file
+		if (entry->path().extension() == ".mp3") {
+			filename += std::to_string(num_mp3_files);
+			num_mp3_files++;
+		}
+		else{//add info file
+			filename += std::to_string(info_files);
+			info_files++;
+		}
+		filename += entry->path().filename().string() +"\n";
+
+	}
+	//TODOL: create IFSTREAM here from the dir?
+}
