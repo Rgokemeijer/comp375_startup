@@ -80,7 +80,7 @@ class ConnectedClient {
 	void handle_close(int epoll_fd);
 
 
-	void list(int epoll_fd, char *dir);
+	void list(int epoll_fd,vector<fs::path> song_list);
 
 	void send_message(int epoll_fd, string DataToSend);
 };

@@ -140,8 +140,8 @@ void ConnectedClient::handle_input(int epoll_fd, vector<fs::path> song_list) {
 	char formatted[1024-blank_bytes];
 	memcpy(formatted, data+blank_bytes, 1024-blank_bytes);
 
-	for (int i = 0; i < 15; i++)
-		cout << "formatted: " << i << ": \"" << formatted[i] << "\"\n";
+	// for (int i = 0; i < 15; i++)
+	// 	cout << "formatted: " << i << ": \"" << formatted[i] << "\"\n";
 	// for (int i = 0; i < 15; i++)
 	// 	cout << "data: " << i << ": \"" << data[i] << "\"\n";
 
@@ -174,6 +174,9 @@ void ConnectedClient::handle_input(int epoll_fd, vector<fs::path> song_list) {
 			cout << "Invalid data sent with play command: ";
 			std::cerr << err.what();
 		}
+	}
+	else if (strcmp(formatted, "list") == 0){ 
+		list(epoll_fd, song_list);
 	}
 	// this->send_dummy_response(epoll_fd);
 }
@@ -246,27 +249,43 @@ void ConnectedClient::handle_close(int epoll_fd) {
 }
 
 //WHAT I'VE ADDED 
-void ConnectedClient::list(int epoll_fd, char *dir) {
-	int num_mp3_files = 0;
-	int info_files = 0;
+void ConnectedClient::list(int epoll_fd,vector<fs::path> song_list) {
+	// int num_mp3_files = 0;
+	// int info_files = 0;
 
-	std::string filename = "";
-	// Loop through all files in the directory
-	for(fs::directory_iterator entry(dir); entry != fs::directory_iterator(); ++entry) {
-		// See if the current file is an MP3 file
-		if (entry->path().extension() == ".mp3") {
-			filename += std::to_string(num_mp3_files);
-			num_mp3_files++;
-		}
-		else{//add info file
-			filename += std::to_string(info_files);
-			info_files++;
-		}
-		filename += entry->path().filename().string() +"\n";
+	// std::string filename = "";
+	// // Loop through all files in the directory
+	// for(fs::directory_iterator entry(dir); entry != fs::directory_iterator(); ++entry) {
+	// 	// See if the current file is an MP3 file
+	// 	if (entry->path().extension() == ".mp3") {
+	// 		filename += std::to_string(num_mp3_files);
+	// 		num_mp3_files++;
+	// 	}
+	// 	else{//add info file
+	// 		filename += std::to_string(info_files);
+	// 		info_files++;
+	// 	}
+	// 	filename += entry->path().filename().string() +"\n";
 
-	}
+	// }
 	//TODOL: create IFSTREAM here from the dir?
+	// Other option
+	std::stringstream ss;
+	for(size_t i = 0; i < song_list.size(); ++i){
+		ss << "(" << i << ") " << song_list[i] << "\n";
+	}
+	std::string file_list = ss.str();
+	cout << file_list;
+	send_message(epoll_fd, file_list);
 }
+
+
+
+
+
+
+
+
 
 void ConnectedClient::send_message(int epoll_fd, string data_to_send) {
 // Create a large array, just to make sure we can send a lot of data in
@@ -274,8 +293,9 @@ void ConnectedClient::send_message(int epoll_fd, string data_to_send) {
 	cout << "Sending Message: " << data_to_send << "\n";
 	const char *c_message = data_to_send.c_str();
 
+
 	ArraySender *array_sender = new ArraySender(c_message, data_to_send.length());
-	delete[] c_message; // The ArraySender creates its own copy of the data so let's delete this copy
+	// delete[] c_message; // The ArraySender creates its own copy of the data so let's delete this copy
 
 	ssize_t num_bytes_sent;
 	ssize_t total_bytes_sent = 0;
@@ -311,6 +331,6 @@ void ConnectedClient::send_message(int epoll_fd, string data_to_send) {
 	else {
 		// Sent everything with no problem so we are done with our ArraySender
 		// object.
-		delete array_sender;
+		// delete array_sender;
 	}
 }

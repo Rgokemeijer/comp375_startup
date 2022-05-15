@@ -45,24 +45,17 @@ public class AudioClient {
 					}
 					// This will throw an error if the command is invalid
 					Integer.valueOf(commands[1]); 
-					System.out.println("About to attemp to connect");
 					Socket socket = new Socket(ip, port);
-					System.out.println("Attempted to connect to socket.");
 					if (socket.isConnected()) {
-						System.out.println("Connected to socket");
 						in = new BufferedInputStream(socket.getInputStream(), 2048);
-						System.out.println("Buffered reader created");
 						//THIS IS NEW CODE
 						dOut = new DataOutputStream(socket.getOutputStream());
 						dOut.writeUTF(command);
 						dOut.flush(); // send play to server
 						//BACK TO GIVEN CODE
 						AudioPlayerThread thread = new AudioPlayerThread(in);
-						System.out.println("APT was created");
 						player = new Thread(thread);
-						System.out.println("player created");
 						player.start();
-						System.out.println("player started");
 					}
 				}
 				catch (Exception e) {
@@ -79,6 +72,25 @@ public class AudioClient {
 				}
 				System.out.println("Goodbye!");
 				break;
+			}
+			else if (command.equals("list")){
+				Socket socket = new Socket(ip, port);
+				if (socket.isConnected()) {
+					dOut = new DataOutputStream(socket.getOutputStream());
+					dOut.writeUTF("list");
+					dOut.flush();
+					in = new BufferedInputStream(socket.getInputStream(), 2048);
+					// Thread.sleep(1000);
+					while(in.available() == 0){} // Wait till recv data
+					while (in.available() > 0) {
+  
+						// Read the byte and
+						// convert the integer to character
+						char c = (char)in.read();
+						// Print the characters
+						System.out.print(c);
+					}
+				}
 			}
 			else {
 				System.err.println("ERROR: unknown command");

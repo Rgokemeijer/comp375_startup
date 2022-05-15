@@ -161,7 +161,7 @@ int accept_connection(int server_socket) {
 	return new_fd;
 }
 
-/* 
+/*  
  * Use fcntl (file control) to set the given socket to non-blocking mode.
  * With non-blocking mode set, any time you try to call send or recv that
  * would normally block, it will instead immediately return -1 and set errno
