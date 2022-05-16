@@ -280,7 +280,6 @@ void setup_new_client(int server_socket,
 	ConnectedClient cc(client_fd, RECEIVING);
 	// Add this new connected client to our map from file descriptor to client.
 	clients[client_fd] = cc;
-	cout << "Finished setting up new client\n";
 }
 
 /**
@@ -317,7 +316,7 @@ void event_loop(int epoll_fd, int server_socket, vector<fs::path> song_list) {
 			// Check if this is an "input" event (i.e. ready to "read" from
 			// this socket)
 			else if ((events[n].events & EPOLLIN) != 0) {
-				cout << "Epoll in event: " << events[n].events << "\n";
+				// cout << "Epoll in event: " << events[n].events << "\n";
 				if (events[n].data.fd == server_socket) {
 					/*
 					 * If the server socket is ready for "reading," that implies

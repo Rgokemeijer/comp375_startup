@@ -16,10 +16,6 @@ public class AudioClient {
 		Thread player = null;
 		int port = 0;
 		String ip;
-		System.out.println("The args.length is: " + args.length);
-		for(int i = 0; i < args.length; i++){
-			System.out.println(args[i]);
-		}
 		if (args.length < 2){
 			System.out.println("Incorrect Usage: AudioClient {port} {ip}"); //TODO
 			System.exit(0);
@@ -95,6 +91,7 @@ public class AudioClient {
 						System.out.print(c);
 					}
 				}
+				socket.close();
 			}
 			else if (commands[0].equals("info")){
 				Socket socket = new Socket(ip, port);
@@ -120,7 +117,7 @@ public class AudioClient {
 				catch(Exception e){
 					System.out.println(e);
 				}
-
+				socket.close();
 			}
 			else if (command.equals("stop")){
 				if (player != null){

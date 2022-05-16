@@ -141,33 +141,18 @@ void ConnectedClient::handle_input(int epoll_fd, vector<fs::path> song_list) {
 	char formatted[1024-blank_bytes];
 	memcpy(formatted, data+blank_bytes, 1024-blank_bytes);
 
-	// for (int i = 0; i < 15; i++)
-	// 	cout << "formatted: " << i << ": \"" << formatted[i] << "\"\n";
-	// for (int i = 0; i < 15; i++)
-	// 	cout << "data: " << i << ": \"" << data[i] << "\"\n";
-
-	// TODO: Eventually you need to actually look at the response and send a
+	// look at the response and send a
 	// response based on what you got from the client (e.g. did they ask for a
 	// list of songs or for you to send them a song?)
-	// For now, the following function call just demonstrates how you might
-	// send data.
 
 	// Replace the space with null terminator so that comparison will be succesufll and the second
 	// argument the song num is still the same
 	formatted[4] = '\0';
 	//play"\0"5"\0"
-	cout << "Command was \"" << formatted << "\"\n";
 	if (strcmp(formatted, "play") == 0){ // Bring pack
 		try{
 			int song_id = abs(std::stoi(formatted + 5) % (int)song_list.size()); // get the int starting at the 
-			cout << "about to call send_audio\n";
-			// if (song_id >= 0 && song_id < (int)song_list.size()){
 			send_audio(epoll_fd, song_list.at(song_id));
-			// }
-			// else{
-				// cout<<"invalid song number selection\n";
-				// send_message(epoll_fd, "Invalid song number");
-			// }
 		}
 		catch(const std::invalid_argument &err){
 			cout << "Invalid data sent with play command: ";
@@ -192,7 +177,6 @@ void ConnectedClient::handle_input(int epoll_fd, vector<fs::path> song_list) {
 void ConnectedClient::send_audio(int epoll_fd, fs::path song_path){
 	// Create a large array, just to make sure we can send a lot of data in
 	// smaller chunks.
-	cout << "Sending Audio Response\n";
 
 	//The rest of this is not yet right
 	ifstream indata (song_path); // Create ifstram object from path
@@ -210,16 +194,10 @@ void ConnectedClient::send_audio(int epoll_fd, fs::path song_path){
 	cout << "sent " << total_bytes_sent << " bytes to client\n";
 
 	/*
-	 * TODO: if the last call to send_next_chunk indicated we couldn't send
-	 * anything because of a full socket buffer, we should do the following:
-	 *
 	 * 1. update our state field to be sending
 	 * 2. set our sender field to be the ArraySender object we created
 	 * 3. update epoll so that it also watches for EPOLLOUT for this client
 	 *    socket (use epoll_ctl with EPOLL_CTL_MOD).
-	 *
-	 * WARNING: These steps are to be done inside of the following if statement,
-	 * not before it.
 	 */
 	if (num_bytes_sent < 0) {
 		// Fill this in with the three steps listed in the comment above.
@@ -318,9 +296,7 @@ void ConnectedClient::get_info(int epoll_fd, vector<fs::path> song_list, int son
 void ConnectedClient::send_message(int epoll_fd, string data_to_send) {
 // Create a large array, just to make sure we can send a lot of data in
 	// smaller chunks.
-	cout << "Sending Message: " << data_to_send << "\n";
 	const char *c_message = data_to_send.c_str();
-
 
 	ArraySender *array_sender = new ArraySender(c_message, data_to_send.length());
 	// delete[] c_message; // The ArraySender creates its own copy of the data so let's delete this copy
@@ -359,6 +335,6 @@ void ConnectedClient::send_message(int epoll_fd, string data_to_send) {
 	else {
 		// Sent everything with no problem so we are done with our ArraySender
 		// object.
-		// delete array_sender;
+		delete array_sender;
 	}
 }
