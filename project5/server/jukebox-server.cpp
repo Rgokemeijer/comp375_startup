@@ -17,6 +17,7 @@
 
 // C standard libraries
 #include <cerrno>
+#include <string.h>
 
 // POSIX and OS-specific libraries
 #include <unistd.h>
@@ -29,6 +30,8 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <sys/types.h>
+
+
 
 #include "ChunkedDataSender.h"
 #include "ConnectedClient.h"
@@ -85,6 +88,7 @@ int main(int argc, char **argv) {
 	// We want to watch for input events (i.e. connection requests) on our
 	// server socket.
 	struct epoll_event server_ev;
+	memset(&server_ev, 0, sizeof(server_ev));
 	server_ev.data.fd = serv_sock;
 	server_ev.events = EPOLLIN;
 
@@ -108,7 +112,8 @@ int setup_server_socket(uint16_t port_num) {
     int sock_fd = socket(AF_INET, SOCK_STREAM, 0);
 
     /* Set SO_REUSEADDR so that we don't waste time in TIME_WAIT. */
-    int val = setsockopt(sock_fd, SOL_SOCKET, SO_REUSEADDR, 
+    int val = 0;
+	val = setsockopt(sock_fd, SOL_SOCKET, SO_REUSEADDR, 
 							&val, sizeof(val));
     if (val < 0) {
         perror("Setting socket option failed");
@@ -252,7 +257,7 @@ void setup_new_client(int server_socket,
 						map<int, ConnectedClient> &clients, 
 						int epoll_fd) {
 	int client_fd = accept_connection(server_socket);
-	cout << "Accepted a new connection!\n";
+	// cout << "Accepted a new connection!\n";
 
 	// The client_fd shouldn't exist in our clients map.
 	if (clients.find(client_fd) != clients.end()) {
@@ -266,6 +271,7 @@ void setup_new_client(int server_socket,
 
 	// Watch for "input" and "hangup" events for new clients.
 	struct epoll_event new_client_ev;
+	memset(&new_client_ev, 0, sizeof(new_client_ev));
 	new_client_ev.events = EPOLLIN | EPOLLRDHUP;
 	new_client_ev.data.fd = client_fd;
 
@@ -280,6 +286,7 @@ void setup_new_client(int server_socket,
 	ConnectedClient cc(client_fd, RECEIVING);
 	// Add this new connected client to our map from file descriptor to client.
 	clients[client_fd] = cc;
+	// cout << "Finished setting up new client\n";
 }
 
 /**
@@ -316,7 +323,6 @@ void event_loop(int epoll_fd, int server_socket, vector<fs::path> song_list) {
 			// Check if this is an "input" event (i.e. ready to "read" from
 			// this socket)
 			else if ((events[n].events & EPOLLIN) != 0) {
-				// cout << "Epoll in event: " << events[n].events << "\n";
 				if (events[n].data.fd == server_socket) {
 					/*
 					 * If the server socket is ready for "reading," that implies
@@ -332,7 +338,6 @@ void event_loop(int epoll_fd, int server_socket, vector<fs::path> song_list) {
 					 * client that has sent us data so we can receive it now
 					 * without worrying about blocking.
 					 */
-					cout << "Server received client data and is calling handle input\n";
 					clients[events[n].data.fd].handle_input(epoll_fd, song_list);
 				}
             }
@@ -347,10 +352,6 @@ void event_loop(int epoll_fd, int server_socket, vector<fs::path> song_list) {
 				 * You'll therefore need to continue sending whatever response
 				 * you had in progress.
 				 */
-				// TODO: Create a new function in your ConnectedClient class
-				// and call that here, sort of like what was done for
-				// handle_input and handle_close earlier in this function.
-				cout << "Continuing a response that was interupted\n";
             	clients[events[n].data.fd].continue_response(epoll_fd);
 			}
         }

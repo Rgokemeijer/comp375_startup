@@ -41,15 +41,6 @@ class ConnectedClient {
 	// Member Functions (i.e. Methods)
 	
 	/**
-	 * Sends a response to the client.
-	 * Note that this is just to demonstrate sending to the client: it doesn't
-	 * send anything intelligent.
-	 *
-	 * @param epoll_fd File descriptor for epoll.
-	 */
-	void send_dummy_response(int epoll_fd);
-
-	/**
 	 * Sends a response of the current audio file to the client.
 	 *
 	 * @param epoll_fd File descriptor for epoll.
@@ -79,11 +70,27 @@ class ConnectedClient {
 	 */
 	void handle_close(int epoll_fd);
 
-
-	void list(int epoll_fd,vector<fs::path> song_list);
-
+	/**
+	 * Lists songs from server.
+	 *
+	 * @param epoll_fd File descriptor for epoll.
+	 * @param song_list Paths to all songs
+	 */
+	void list(int epoll_fd, vector<fs::path> song_list);
+	/**
+	 * Gets .info file corresponding to .mp3, based off of index #
+	 *
+	 * @param epoll_fd File descriptor for epoll.
+	 * @param song_list Paths to all songs
+	 * @param song_index index of song
+	 */
 	void get_info(int epoll_fd, vector<fs::path> song_list, int song_index);
-
+	/**
+	 * Server sending string to client
+	 *
+	 * @param epoll_fd File descriptor for epoll.
+	 * @param DataToSend
+	 */
 	void send_message(int epoll_fd, string DataToSend);
 };
 

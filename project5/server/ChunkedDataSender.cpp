@@ -87,6 +87,7 @@ ssize_t FileSender::send_next_chunk(int sock_fd) {
 
 		ssize_t num_bytes_sent = send(sock_fd, chunk, bytes_in_chunk, 0);
 
+		delete[] chunk;
 		if (num_bytes_sent > 0) {
 			// We successfully send some of the data so update our location in
 			// the array so we know where to start sending the next time we

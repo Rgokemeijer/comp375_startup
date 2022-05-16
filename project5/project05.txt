@@ -1,32 +1,38 @@
 COMP 375 @ USD
 Project 5: Internet Jukebox
 
-Update this file so that it contains the following info.
-Submissions where this file has not been completed will NOT be accepted (i.e.
-will receive a failing grade).
+Description: C++ server and multi threaded Java client program 
+which streams audio files using a custom protocol
 
-1. Partner 1's FULL Name:
-   Partner 1's USD Email Address:
-   Partner 2's FULL Name:
-   Partner 2's USD Email Address:
+
+1. Partner 1's FULL Name: Russell Gokemeijer
+   Partner 1's USD Email Address: RGokemeijer@sandiego.edu
+   Partner 2's FULL Name: Ajaypal Samra
+   Partner 2's USD Email Address:asamra@sandiego.edu
 
 2. A typed copy of USD's academic integrity pledge, followed by each partners'
    typed initials (as a way of "signing the pledge.").
 
-   The academic integrity pledge can be found on page 3 of
-   the document found here: https://www.sandiego.edu/conduct/documents/HonorCode.pdf
-   To be clear, it is the text that starts, "I pledge to demonstrate...".
+"I pledge to demonstrate personal and academic integrity in all matters with my fellow
+students, the faculty, and the administration here at USD. I promise to be honest and
+accountable for my actions; and to uphold the statutes of scholastic honesty to better
+myself and those around me."-- R.G, A.S.
 
 3. The estimated number of hours spent working on the project.
    Break this down into three categories:
-		- Time spent partner 1 spent working alone
-		- Time spent partner 2 spent working alone
-		- Time spent working together
+		- Time spent partner 1 spent working alone: 2
+		- Time spent partner 2 spent working alone: 1
+		- Time spent working together: 15
 
 4. A list of missing features and/or known bugs.
+
+No bugs are currently known.
 
 5. Did you need to spend a project buck on this project to get a one week
    deadline extension? (y/n)
 
 6. Any feedback you with to give me relating the project (e.g. Was it
    interesting? How could it be improved?)
+
+The amount of time on this project spent on the protocol was very minimal to the rest of the projects
+debugging. Dealing with the audio recv and send, recv errors was the bulk of the time.

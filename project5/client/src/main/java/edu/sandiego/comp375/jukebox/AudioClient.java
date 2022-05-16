@@ -28,7 +28,6 @@ public class AudioClient {
 			System.exit(0);
 		}
 		ip = args[1];
-		System.out.println("Client: Connecting to " + ip + " on port: " + port);
 
 		while (true) {
 			System.out.print(">> ");

@@ -54,9 +54,6 @@ class ArraySender : public virtual ChunkedDataSender {
 	virtual ssize_t send_next_chunk(int sock_fd);
 };
 
-// TODO: Create a new class named FileSender that implements the
-// ChunkedDataSender interface. This class should allow the user to send a big
-// file over a socket in chunks.
 
 class FileSender : public virtual ChunkedDataSender {
   private:
@@ -76,8 +73,7 @@ class FileSender : public virtual ChunkedDataSender {
 	 * Destructor for ArraySender class.
 	 */
 	~FileSender() {
-		//TODO figure this out
-		// delete[] array;
+		(*indata).close();
 	}
 
 	/**
