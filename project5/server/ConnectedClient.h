@@ -82,6 +82,8 @@ class ConnectedClient {
 
 	void list(int epoll_fd,vector<fs::path> song_list);
 
+	void get_info(int epoll_fd, vector<fs::path> song_list, int song_index);
+
 	void send_message(int epoll_fd, string DataToSend);
 };
 

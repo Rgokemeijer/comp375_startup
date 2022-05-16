@@ -1,7 +1,7 @@
 /*
  * File: jukebox-server.cpp
  *
- * Authors: (TODO: Fill this in with author info)
+ * Authors: Russell Gokemeijer and Ajay Samra
  *
  * Server for an Internet Jukebox.
  */
@@ -333,7 +333,7 @@ void event_loop(int epoll_fd, int server_socket, vector<fs::path> song_list) {
 					 * client that has sent us data so we can receive it now
 					 * without worrying about blocking.
 					 */
-					cout << "Server received client data and is claling handle input\n";
+					cout << "Server received client data and is calling handle input\n";
 					clients[events[n].data.fd].handle_input(epoll_fd, song_list);
 				}
             }

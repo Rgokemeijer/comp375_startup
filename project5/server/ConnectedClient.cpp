@@ -123,6 +123,7 @@ void ConnectedClient::continue_response(int epoll_fd) {
 void ConnectedClient::handle_input(int epoll_fd, vector<fs::path> song_list) {
 	cout << "Ready to read from client " << this->client_fd << "\n";
 	char data[1024];
+	memset(data, 0, 1024);
 	ssize_t bytes_received = recv(this->client_fd, data, 1024, 0);
 	if (bytes_received < 0) {
 		perror("client_read recv");
@@ -158,16 +159,14 @@ void ConnectedClient::handle_input(int epoll_fd, vector<fs::path> song_list) {
 	cout << "Command was \"" << formatted << "\"\n";
 	if (strcmp(formatted, "play") == 0){ // Bring pack
 		try{
-			int song_id = std::stoi(formatted + 5) % (int)song_list.size(); // get the int starting at the 
+			int song_id = abs(std::stoi(formatted + 5) % (int)song_list.size()); // get the int starting at the 
 			cout << "about to call send_audio\n";
 			// if (song_id >= 0 && song_id < (int)song_list.size()){
-				send_audio(epoll_fd, song_list.at(song_id));
+			send_audio(epoll_fd, song_list.at(song_id));
 			// }
 			// else{
 				// cout<<"invalid song number selection\n";
 				// send_message(epoll_fd, "Invalid song number");
-				// send(sock_fd, chunk, bytes_in_chunk, 0);
-
 			// }
 		}
 		catch(const std::invalid_argument &err){
@@ -177,6 +176,15 @@ void ConnectedClient::handle_input(int epoll_fd, vector<fs::path> song_list) {
 	}
 	else if (strcmp(formatted, "list") == 0){ 
 		list(epoll_fd, song_list);
+	}
+	else if (strcmp(formatted, "info") == 0){
+		try{
+			get_info(epoll_fd, song_list, std::stoi(formatted + 5));
+		}
+		catch(const std::invalid_argument &err){
+			cout << "Invalid data sent with play command: ";
+			std::cerr << err.what();
+		}
 	}
 	// this->send_dummy_response(epoll_fd);
 }
@@ -250,26 +258,6 @@ void ConnectedClient::handle_close(int epoll_fd) {
 
 //WHAT I'VE ADDED 
 void ConnectedClient::list(int epoll_fd,vector<fs::path> song_list) {
-	// int num_mp3_files = 0;
-	// int info_files = 0;
-
-	// std::string filename = "";
-	// // Loop through all files in the directory
-	// for(fs::directory_iterator entry(dir); entry != fs::directory_iterator(); ++entry) {
-	// 	// See if the current file is an MP3 file
-	// 	if (entry->path().extension() == ".mp3") {
-	// 		filename += std::to_string(num_mp3_files);
-	// 		num_mp3_files++;
-	// 	}
-	// 	else{//add info file
-	// 		filename += std::to_string(info_files);
-	// 		info_files++;
-	// 	}
-	// 	filename += entry->path().filename().string() +"\n";
-
-	// }
-	//TODOL: create IFSTREAM here from the dir?
-	// Other option
 	std::stringstream ss;
 	for(size_t i = 0; i < song_list.size(); ++i){
 		ss << "(" << i << ") " << song_list[i] << "\n";
@@ -280,10 +268,50 @@ void ConnectedClient::list(int epoll_fd,vector<fs::path> song_list) {
 }
 
 
+void ConnectedClient::get_info(int epoll_fd, vector<fs::path> song_list, int song_index){
+	if (song_index < 0 || song_index >= (int)song_list.size()){
+		send_message(epoll_fd, "Invalid song index specified: " + std::to_string(song_index));
+		return;
+	}
+	fs::path info_path = song_list[song_index].replace_extension(".mp3.info");
+	if (not(fs::exists(info_path))) {
+		send_message(epoll_fd, "Song does not have an info file.");
+		return;
+	}
+	FileSender *file_sender = new FileSender(info_path); // pass this object to the File
 
+	ssize_t num_bytes_sent;
+	ssize_t total_bytes_sent = 0;
 
+	// keep sending the next chunk until it says we either didn't send
+	// anything (0 return indicates nothing left to send) or until we can't
+	// send anymore because of a full socket buffer (-1 return value)
+	while((num_bytes_sent = file_sender->send_next_chunk(this->client_fd)) > 0) {
+		total_bytes_sent += num_bytes_sent;
+	}
+	cout << "sent " << total_bytes_sent << " bytes to client\n";
 
-
+	/*
+	 * 1. update our state field to be sending
+	 * 2. set our sender field to be the ArraySender object we created
+	 * 3. update epoll so that it also watches for EPOLLOUT for this client
+	 *    socket (use epoll_ctl with EPOLL_CTL_MOD).
+	 */
+	if (num_bytes_sent < 0) {
+		this->state = SENDING;
+		this->sender = file_sender;
+		struct epoll_event client_ev;
+		client_ev.data.fd = this->client_fd;
+		client_ev.events = EPOLLIN;
+		if(epoll_ctl(epoll_fd, EPOLL_CTL_MOD, this->client_fd, &client_ev) == -1){
+			perror("Error updating epoll to watch for EPOLLOUT");
+			exit(1);	
+		}
+	}
+	else {
+		delete file_sender;
+	}
+}
 
 
 

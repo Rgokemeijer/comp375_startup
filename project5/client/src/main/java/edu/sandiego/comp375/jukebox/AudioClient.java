@@ -52,11 +52,15 @@ public class AudioClient {
 						dOut = new DataOutputStream(socket.getOutputStream());
 						dOut.writeUTF(command);
 						dOut.flush(); // send play to server
+
 						//BACK TO GIVEN CODE
 						AudioPlayerThread thread = new AudioPlayerThread(in);
 						player = new Thread(thread);
 						player.start();
 					}
+				}
+				catch(ArrayIndexOutOfBoundsException e){
+					System.out.println("Invalid song index");
 				}
 				catch (Exception e) {
 					System.out.println(e);
@@ -90,6 +94,37 @@ public class AudioClient {
 						// Print the characters
 						System.out.print(c);
 					}
+				}
+			}
+			else if (commands[0].equals("info")){
+				Socket socket = new Socket(ip, port);
+				try{
+					Integer.valueOf(commands[1]); // make sure second arg is an integer
+					if (socket.isConnected()) {
+						dOut = new DataOutputStream(socket.getOutputStream());
+						dOut.writeUTF(command);
+						dOut.flush();
+						in = new BufferedInputStream(socket.getInputStream(), 2048);
+						while(in.available() == 0){} // Wait till recv data
+						while (in.available() > 0) {
+	
+							// Read the byte and
+							// convert the integer to character
+							char c = (char)in.read();
+							// Print the characters
+							System.out.print(c);
+						}
+						System.out.println();
+					}
+				}
+				catch(Exception e){
+					System.out.println(e);
+				}
+
+			}
+			else if (command.equals("stop")){
+				if (player != null){
+					player.stop();
 				}
 			}
 			else {
