@@ -36,3 +36,6 @@ No bugs are currently known.
 
 The amount of time on this project spent on the protocol was very minimal to the rest of the projects
 debugging. Dealing with the audio recv and send, recv errors was the bulk of the time.
+
+Github:
+https://github.com/Rgokemeijer/comp375_startup
