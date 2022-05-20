@@ -16,6 +16,7 @@ public class AudioClient {
 		Thread player = null;
 		int port = 0;
 		String ip;
+		Socket socket = null;
 		if (args.length < 2){
 			System.out.println("Incorrect Usage: AudioClient {port} {ip}"); //TODO
 			System.exit(0);
@@ -33,14 +34,18 @@ public class AudioClient {
 			System.out.print(">> ");
 			String command = s.nextLine();
 			String commands[] = command.split(" ", 2);
+			if (socket != null && socket.isConnected()){
+				socket.close();
+			}
+			Thread.sleep(500);
+			if (player != null){
+				player.stop();
+			}
+			socket = new Socket(ip, port);
 			if (commands[0].equals("play")) {
 				try {
-					if (player != null){
-						player.stop();
-					}
 					// This will throw an error if the command is invalid
 					Integer.valueOf(commands[1]); 
-					Socket socket = new Socket(ip, port);
 					if (socket.isConnected()) {
 						in = new BufferedInputStream(socket.getInputStream(), 2048);
 						//THIS IS NEW CODE
@@ -66,14 +71,11 @@ public class AudioClient {
 				// playing.
 				// Your final solution should make sure that the exit command
 				// causes music to stop playing immediately.
-				if (player != null){
-					player.stop();
-				}
 				System.out.println("Goodbye!");
 				break;
 			}
 			else if (command.equals("list")){
-				Socket socket = new Socket(ip, port);
+				socket = new Socket(ip, port);
 				if (socket.isConnected()) {
 					dOut = new DataOutputStream(socket.getOutputStream());
 					dOut.writeUTF("list");
@@ -93,7 +95,7 @@ public class AudioClient {
 				socket.close();
 			}
 			else if (commands[0].equals("info")){
-				Socket socket = new Socket(ip, port);
+				socket = new Socket(ip, port);
 				try{
 					Integer.valueOf(commands[1]); // make sure second arg is an integer
 					if (socket.isConnected()) {
