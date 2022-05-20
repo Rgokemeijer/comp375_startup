@@ -329,6 +329,7 @@ void event_loop(int epoll_fd, int server_socket, vector<fs::path> song_list) {
 					 * we have a new client that wants to connect so lets
 					 * set up that new client now.
 					 */
+					
 					setup_new_client(server_socket, clients, epoll_fd);
 
 				}
@@ -352,7 +353,9 @@ void event_loop(int epoll_fd, int server_socket, vector<fs::path> song_list) {
 				 * You'll therefore need to continue sending whatever response
 				 * you had in progress.
 				 */
-            	clients[events[n].data.fd].continue_response(epoll_fd);
+				cout << "Continuing sending\n";
+				// cout << clients[events[n].data.fd];
+				clients[events[n].data.fd].continue_response(epoll_fd);
 			}
         }
     }

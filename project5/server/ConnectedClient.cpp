@@ -49,9 +49,9 @@ void ConnectedClient::continue_response(int epoll_fd) {
 		struct epoll_event client_ev;
 		client_ev.data.fd = this->client_fd;
 		client_ev.events = EPOLLOUT;
-
+		cout << "Stopped listening for epollOUT\n";
 		if(epoll_ctl(epoll_fd, EPOLL_CTL_DEL, this->client_fd, &client_ev) == -1){
-			perror("Error updating epoll to watch for EPOLLOUT");
+			perror("Error updating epoll to stop watch for EPOLLOUT");
 			exit(1);	
 		}
 
@@ -67,13 +67,17 @@ void ConnectedClient::handle_input(int epoll_fd, vector<fs::path> song_list) {
 		perror("client_read recv");
 		exit(EXIT_FAILURE);
 	}
-
+	cout << "data: ";
+	for (int i = 0; i < 1024; i++) {
+		cout << data[i];
+	}
+	cout  << "\n";
 	//remove blank bytes of client input
 	int blank_bytes = 0;
 	while(!(isalpha(data[blank_bytes]))){
 		blank_bytes+=1;
 		if (blank_bytes > 500){
-			break;
+			return; // Is a bad epoll event/ ignore
 		}
 	}
 	char formatted[1024-blank_bytes];
@@ -101,7 +105,7 @@ void ConnectedClient::handle_input(int epoll_fd, vector<fs::path> song_list) {
 			get_info(epoll_fd, song_list, std::stoi(formatted + 5));
 		}
 		catch(const std::invalid_argument &err){
-			cout << "Invalid data sent with play command: ";
+			cout << "Invalid data sent with info command: ";
 			std::cerr << err.what();
 		}
 	}
@@ -140,7 +144,7 @@ void ConnectedClient::send_audio(int epoll_fd, fs::path song_path){
 		this->sender = file_sender;
 		struct epoll_event client_ev;
 		client_ev.data.fd = this->client_fd;
-		client_ev.events = EPOLLIN;
+		client_ev.events = EPOLLOUT; // Changed to out instead of in
 		if(epoll_ctl(epoll_fd, EPOLL_CTL_MOD, this->client_fd, &client_ev) == -1){
 			perror("Error updating epoll to watch for EPOLLOUT");
 			exit(1);	
@@ -208,7 +212,7 @@ void ConnectedClient::get_info(int epoll_fd, vector<fs::path> song_list, int son
 		this->sender = file_sender;
 		struct epoll_event client_ev;
 		client_ev.data.fd = this->client_fd;
-		client_ev.events = EPOLLIN;
+		client_ev.events = EPOLLOUT;
 		if(epoll_ctl(epoll_fd, EPOLL_CTL_MOD, this->client_fd, &client_ev) == -1){
 			perror("Error updating epoll to watch for EPOLLOUT");
 			exit(1);	
@@ -254,7 +258,7 @@ void ConnectedClient::send_message(int epoll_fd, string data_to_send) {
 		this->sender = array_sender;
 		struct epoll_event client_ev;
 		client_ev.data.fd = this->client_fd;
-		client_ev.events = EPOLLIN;
+		client_ev.events = EPOLLOUT;
 		if(epoll_ctl(epoll_fd, EPOLL_CTL_MOD, this->client_fd, &client_ev) == -1){
 			perror("Error updating epoll to watch for EPOLLOUT");
 			exit(1);	
