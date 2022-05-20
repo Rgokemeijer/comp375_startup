@@ -67,11 +67,11 @@ void ConnectedClient::handle_input(int epoll_fd, vector<fs::path> song_list) {
 		perror("client_read recv");
 		exit(EXIT_FAILURE);
 	}
-	cout << "data: ";
-	for (int i = 0; i < 1024; i++) {
-		cout << data[i];
-	}
-	cout  << "\n";
+	// cout << "data: ";
+	// for (int i = 0; i < 1024; i++) {
+	// 	cout << data[i];
+	// }
+	// cout  << "\n";
 	//remove blank bytes of client input
 	int blank_bytes = 0;
 	while(!(isalpha(data[blank_bytes]))){

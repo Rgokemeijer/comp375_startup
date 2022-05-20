@@ -37,7 +37,6 @@ public class AudioClient {
 			if (socket != null && socket.isConnected()){
 				socket.close();
 			}
-			Thread.sleep(500);
 			if (player != null){
 				player.stop();
 			}
@@ -75,7 +74,6 @@ public class AudioClient {
 				break;
 			}
 			else if (command.equals("list")){
-				socket = new Socket(ip, port);
 				if (socket.isConnected()) {
 					dOut = new DataOutputStream(socket.getOutputStream());
 					dOut.writeUTF("list");
@@ -95,7 +93,6 @@ public class AudioClient {
 				socket.close();
 			}
 			else if (commands[0].equals("info")){
-				socket = new Socket(ip, port);
 				try{
 					Integer.valueOf(commands[1]); // make sure second arg is an integer
 					if (socket.isConnected()) {
