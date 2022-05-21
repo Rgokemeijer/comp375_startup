@@ -316,10 +316,10 @@ void event_loop(int epoll_fd, int server_socket, vector<fs::path> song_list) {
 			if ((events[n].events & EPOLLRDHUP) != 0) {
 				// If we get here, the socket associated with this event was
 				// closed by the remote host so we should clean up.
-				cout << "Closing client " << events[n].data.fd << "\n";
 				clients[events[n].data.fd].handle_close(epoll_fd);
 				clients.erase(events[n].data.fd);
 			}
+
 			// Check if this is an "input" event (i.e. ready to "read" from
 			// this socket)
 			else if ((events[n].events & EPOLLIN) != 0) {
@@ -329,7 +329,6 @@ void event_loop(int epoll_fd, int server_socket, vector<fs::path> song_list) {
 					 * we have a new client that wants to connect so lets
 					 * set up that new client now.
 					 */
-					cout << "setting up client " << events[n].data.fd << "\n";
 					setup_new_client(server_socket, clients, epoll_fd);
 
 				}
@@ -346,15 +345,14 @@ void event_loop(int epoll_fd, int server_socket, vector<fs::path> song_list) {
 			// Check if this is an "output" event.
 			// Note: You may want/need to make this an else if, depending on
 			// how you are handling clients.
-			else if ((events[n].events & EPOLLOUT) != 0) {
+			if ((events[n].events & EPOLLOUT) != 0) {
 				/* 
 				 * If you set things up correctly, you should only reach this
 				 * point if you started sending a response, but had to stop.
 				 * You'll therefore need to continue sending whatever response
 				 * you had in progress.
 				 */
-				cout << "Buffer available send resumed to " << events[n].data.fd << "\n";
-				clients[events[n].data.fd].continue_response(epoll_fd);
+            	clients[events[n].data.fd].continue_response(epoll_fd);
 			}
         }
     }
