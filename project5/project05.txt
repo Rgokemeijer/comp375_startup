@@ -20,9 +20,9 @@ myself and those around me."-- R.G, A.S.
 
 3. The estimated number of hours spent working on the project.
    Break this down into three categories:
-		- Time spent partner 1 spent working alone: 2
-		- Time spent partner 2 spent working alone: 1
-		- Time spent working together: 15
+		- Time spent partner 1 spent working alone: 12
+		- Time spent partner 2 spent working alone: 3
+		- Time spent working together: 20
 
 4. A list of missing features and/or known bugs.
 
